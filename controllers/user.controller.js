@@ -1,75 +1,87 @@
-const UserModel = require("../models/user.model");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-require("dotenv").config();
-const secret = process.env.SECRET;
+const User = require("../models/user.model");
 
-exports.register = async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).send({
-      message: "Please provide username and password",
-    });
-  }
-  const existingUser = await UserModel.findOne({ username });
-  if (existingUser) {
-    return res.status(400).send({
-      message: "This username is already existed",
-    });
-  }
-
+const getUserProfile = async (req, res) => {
   try {
-    const salt = bcrypt.genSaltSync(10);
-    const hashedPassword = bcrypt.hashSync(password, salt);
-    const user = await UserModel.create({
-      username,
-      password: hashedPassword,
-    });
-    res.status(201).send({
-      message: "User registered successfully",
-    });
-  } catch (error) {
-    res.status(500).send({
-      message:
-        error.message || "Some errors occurred while registering a new user",
-    });
-  }
-};
+    const user = await User.findById(req.user._id);
 
-exports.login = async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).send({
-      message: "Please provide username and password",
-    });
-  }
-  try {
-    const userDoc = await UserModel.findOne({ username });
-    if (!userDoc) {
-      return res.status(404).send({ message: "User not found" });
-    }
-    const isPasswordMatched = bcrypt.compareSync(password, userDoc.password);
-    if (!isPasswordMatched) {
-      return res.status(401).send({ message: "Invalid credentials" });
-    }
-    //login successfully
-    jwt.sign({ username, id: userDoc._id }, secret, {}, (err, token) => {
-      if (err) {
-        return res.status(500).send({
-          message: "Internal server error: Authentication failed",
-        });
-      }
-      //token generation
-      res.send({
-        message: "เข้าสู่ระบบสำเร็จ",
-        id: userDoc._id,
-        username,
-        accessToken: token,
+    if (user) {
+      res.json({
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        profilePic: user.profilePic,
+        gender: user.gender,
+        contact: user.contact,
+        role: user.role,
+        history: user.history
       });
-    });
+    } else {
+      res.status(404).json({ message: "User not found" });
+    }
   } catch (error) {
-    res.status(500).send({
-      message: error.message || "Some errors occurred while logging in user",
-    });
+    res.status(500).json({ message: error.message });
   }
 };
+
+const updateUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+      user.username = req.body.username || user.username;
+      user.email = req.body.email || user.email;
+      user.profilePic = req.body.profilePic || user.profilePic;
+      user.gender = req.body.gender || user.gender;
+      user.contact = req.body.contact || user.contact;
+
+      if (req.body.password) {
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(req.body.password, salt);
+      }
+
+      const updatedUser = await user.save();
+
+      res.json({
+        _id: updatedUser._id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        profilePic: updatedUser.profilePic,
+        gender: updatedUser.gender,
+        contact: updatedUser.contact,
+        role: updatedUser.role,
+        token: req.headers.authorization.split(" ")[1],
+      });
+    } else {
+      res.status(404).json({ message: "User not found" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Admin: Get all users
+const getUsers = async (req, res) => {
+  try {
+    const users = await User.find({});
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Admin: Delete user
+const deleteUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (user) {
+      await user.deleteOne();
+      res.json({ message: 'User removed' });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { getUserProfile, updateUserProfile, getUsers, deleteUser };
