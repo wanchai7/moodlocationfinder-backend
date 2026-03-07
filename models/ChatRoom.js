@@ -9,28 +9,23 @@ const ChatRoom = sequelize.define('ChatRoom', {
     },
     userId: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-        comment: 'ID ของ user ที่เปิดห้องแชท'
+        allowNull: false
     },
     adminId: {
         type: DataTypes.INTEGER,
-        allowNull: true,
-        comment: 'ID ของ admin ที่รับเรื่อง (null = ยังไม่มี admin รับ)'
+        allowNull: true
     },
     status: {
         type: DataTypes.ENUM('open', 'closed'),
-        defaultValue: 'open',
-        comment: 'สถานะห้องแชท'
+        defaultValue: 'open'
     },
     lastMessage: {
         type: DataTypes.TEXT,
-        allowNull: true,
-        comment: 'ข้อความล่าสุดในห้อง (สำหรับแสดง preview)'
+        allowNull: true
     },
     lastMessageAt: {
         type: DataTypes.DATE,
-        allowNull: true,
-        comment: 'เวลาข้อความล่าสุด'
+        allowNull: true
     }
 }, {
     tableName: 'chat_rooms',

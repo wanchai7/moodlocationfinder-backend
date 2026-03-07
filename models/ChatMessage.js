@@ -9,33 +9,27 @@ const ChatMessage = sequelize.define('ChatMessage', {
     },
     chatRoomId: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-        comment: 'ID ห้องแชท'
+        allowNull: false
     },
     senderId: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-        comment: 'ID ผู้ส่งข้อความ'
+        allowNull: false
     },
     senderRole: {
         type: DataTypes.ENUM('user', 'admin'),
-        allowNull: false,
-        comment: 'บทบาทของผู้ส่ง (user หรือ admin)'
+        allowNull: false
     },
     message: {
         type: DataTypes.TEXT,
-        allowNull: true,
-        comment: 'เนื้อหาข้อความ'
+        allowNull: true
     },
     image: {
         type: DataTypes.STRING,
-        allowNull: true,
-        comment: 'URL รูปภาพ (ถ้ามี)'
+        allowNull: true
     },
     isRead: {
         type: DataTypes.BOOLEAN,
-        defaultValue: false,
-        comment: 'อ่านแล้วหรือยัง'
+        defaultValue: false
     }
 }, {
     tableName: 'chat_messages',
