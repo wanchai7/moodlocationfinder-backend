@@ -40,6 +40,10 @@
         {
             "key": "emailLogId",
             "value": ""
+        },
+        {
+            "key": "chatRoomId",
+            "value": ""
         }
     ],
     "item": [
@@ -857,7 +861,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"name\": \"Café De Moon\",\n    \"description\": \"ร้านกาแฟบรรยากาศดี เหมาะกับวันที่อยากนั่งเล่นชิลๆ\",\n    \"category\": \"cafe\",\n    \"moods\": [\"สงบ\", \"ผ่อนคลาย\", \"โรแมนติก\"],\n    \"personality\": [\"introvert\", \"creative\"],\n    \"images\": [\"https://example.com/cafe1.jpg\", \"https://example.com/cafe2.jpg\"],\n    \"address\": \"123 ถ.สุขุมวิท กรุงเทพฯ\",\n    \"latitude\": 13.7563,\n    \"longitude\": 100.5018\n}"
+                                    "raw": "{\n    \"name\": \"Café De Moon\",\n    \"description\": \"ร้านกาแฟบรรยากาศดี เหมาะกับวันที่อยากนั่งเล่นชิลๆ\",\n    \"category\": \"cafe\",\n    \"moods\": [\"สงบ\", \"ผ่อนคลาย\", \"โรแมนติก\"],\n    \"personality\": [\"introvert\", \"creative\"],\n    \"images\": [\"https://example.com/cafe1.jpg\", \"https://example.com/cafe2.jpg\"],\n    \"address\": \"123 ถ.สุขุมวิท กรุงเทพฯ\",\n    \"googleMapsUrl\": \"https://www.google.com/maps/place/Caf%C3%A9+De+Moon/@13.7563,100.5018,15z\"\n}"
                                 },
                                 "url": {
                                     "raw": "{{baseUrl}}/admin/places",
@@ -887,7 +891,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"name\": \"Café De Moon (Updated)\",\n    \"description\": \"ร้านกาแฟสุดชิล อัปเดตเมนูใหม่!\",\n    \"category\": \"cafe\"\n}"
+                                    "raw": "{\n    \"name\": \"Café De Moon (Updated)\",\n    \"description\": \"ร้านกาแฟสุดชิล อัปเดตเมนูใหม่!\",\n    \"category\": \"cafe\",\n    \"googleMapsUrl\": \"https://www.google.com/maps/place/Caf%C3%A9+De+Moon/@13.7580,100.5050,15z\"\n}"
                                 },
                                 "url": {
                                     "raw": "{{baseUrl}}/admin/places/{{placeId}}",
@@ -1277,6 +1281,337 @@
                             }
                         }
                     ]
+                }
+            ]
+        },
+        {
+            "name": "💬 Chat กับ Admin (UC15)",
+            "description": "ระบบแชทระหว่าง User กับ Admin แบบ Realtime (Socket.IO)\n\n## Flow การใช้งาน\n1. User: เปิดห้องแชท (POST /chat/room)\n2. User: ส่งข้อความ (POST /chat/room/:roomId/message)\n3. Admin: ดูห้องแชททั้งหมด (GET /chat/rooms)\n4. Admin: ส่งข้อความตอบ\n5. Admin: ปิดห้องแชท (PATCH /chat/room/:roomId/close)\n\n## Socket.IO\nเชื่อมต่อ: io('http://localhost:5000', { query: { userId } })\nEvents: newMessage, messageNotification, newChatRoom, roomClosed",
+            "item": [
+                {
+                    "name": "👤 User: เปิดห้องแชท",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.collectionVariables.set('chatRoomId', jsonData.id);",
+                                    "    pm.test('เปิดห้องแชทสำเร็จ', function () {",
+                                    "        pm.expect(jsonData).to.have.property('id');",
+                                    "        pm.expect(jsonData.status).to.eql('open');",
+                                    "    });",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/chat/room",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "chat",
+                                "room"
+                            ]
+                        },
+                        "description": "สร้างหรือดึงห้องแชทที่เปิดอยู่ของ user (ถ้ามีห้องที่ open อยู่แล้วจะได้ห้องเดิม)"
+                    }
+                },
+                {
+                    "name": "👤 User: ส่งข้อความ (Text)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.test('ส่งข้อความสำเร็จ', function () {",
+                                    "        pm.expect(jsonData).to.have.property('id');",
+                                    "        pm.expect(jsonData.senderRole).to.eql('user');",
+                                    "    });",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"message\": \"สวัสดีครับ อยากสอบถามเรื่องสถานที่แนะนำครับ\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/chat/room/{{chatRoomId}}/message",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "chat",
+                                "room",
+                                "{{chatRoomId}}",
+                                "message"
+                            ]
+                        },
+                        "description": "ส่งข้อความแบบ text ในห้องแชท"
+                    }
+                },
+                {
+                    "name": "👤 User: ส่งข้อความ (รูปภาพ Cloudinary)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"message\": \"ดูรูปนี้ครับ\",\n    \"image\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/chat/room/{{chatRoomId}}/message",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "chat",
+                                "room",
+                                "{{chatRoomId}}",
+                                "message"
+                            ]
+                        },
+                        "description": "ส่งข้อความพร้อมรูปภาพ (base64) จะถูกอัพโหลดไป Cloudinary อัตโนมัติ"
+                    }
+                },
+                {
+                    "name": "👤 User: ดูข้อความในห้อง",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/chat/room/{{chatRoomId}}/messages",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "chat",
+                                "room",
+                                "{{chatRoomId}}",
+                                "messages"
+                            ]
+                        },
+                        "description": "ดึงข้อความทั้งหมดในห้องแชท + อัพเดทสถานะอ่านแล้วอัตโนมัติ"
+                    }
+                },
+                {
+                    "name": "👤 User: ดูห้องแชทของตัวเอง",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/chat/my-rooms",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "chat",
+                                "my-rooms"
+                            ]
+                        },
+                        "description": "ดึงรายการห้องแชทของ user (ทั้ง open และ closed)"
+                    }
+                },
+                {
+                    "name": "📊 นับข้อความยังไม่ได้อ่าน",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/chat/unread-count",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "chat",
+                                "unread-count"
+                            ]
+                        },
+                        "description": "นับข้อความที่ยังไม่ได้อ่าน (ใช้ได้ทั้ง User และ Admin, ใช้ token ของใครก็ได้)"
+                    }
+                },
+                {
+                    "name": "🛡️ Admin: ดูห้องแชททั้งหมด",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{adminToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/chat/rooms?status=open",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "chat",
+                                "rooms"
+                            ],
+                            "query": [
+                                {
+                                    "key": "status",
+                                    "value": "open",
+                                    "description": "กรองตามสถานะ: open หรือ closed (ไม่ส่งก็ได้ = ดูทั้งหมด)"
+                                }
+                            ]
+                        },
+                        "description": "Admin ดูห้องแชททั้งหมด พร้อมจำนวนข้อความที่ยังไม่ได้อ่าน"
+                    }
+                },
+                {
+                    "name": "🛡️ Admin: ส่งข้อความตอบ",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.test('Admin ส่งข้อความสำเร็จ', function () {",
+                                    "        pm.expect(jsonData).to.have.property('id');",
+                                    "        pm.expect(jsonData.senderRole).to.eql('admin');",
+                                    "    });",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{adminToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"message\": \"สวัสดีครับ Admin รับเรื่องแล้วนะครับ มีอะไรสอบถามได้เลยครับ\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/chat/room/{{chatRoomId}}/message",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "chat",
+                                "room",
+                                "{{chatRoomId}}",
+                                "message"
+                            ]
+                        },
+                        "description": "Admin ส่งข้อความตอบกลับ (Admin จะถูก assign เข้าห้องอัตโนมัติเมื่อส่งข้อความครั้งแรก)"
+                    }
+                },
+                {
+                    "name": "🛡️ Admin: ดูข้อความในห้อง",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{adminToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/chat/room/{{chatRoomId}}/messages",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "chat",
+                                "room",
+                                "{{chatRoomId}}",
+                                "messages"
+                            ]
+                        },
+                        "description": "Admin ดูข้อความทั้งหมดในห้องแชท"
+                    }
+                },
+                {
+                    "name": "🛡️ Admin: ปิดห้องแชท",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{adminToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/chat/room/{{chatRoomId}}/close",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "chat",
+                                "room",
+                                "{{chatRoomId}}",
+                                "close"
+                            ]
+                        },
+                        "description": "Admin ปิดห้องแชท (เปลี่ยนสถานะเป็น closed)"
+                    }
                 }
             ]
         },
