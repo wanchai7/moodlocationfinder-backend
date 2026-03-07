@@ -18,8 +18,24 @@ const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// CORS Configuration
+const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+    : ['http://localhost:5000'];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // อนุญาต requests ที่ไม่มี origin (เช่น Postman, mobile apps)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
