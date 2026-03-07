@@ -1,10 +1,12 @@
-const express = require('express');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
 const { connectDB } = require('./config/db');
 const { sequelize } = require('./models');
+
+// Import Socket.IO (สร้าง app + server พร้อม WebSocket)
+const { app, server } = require('./lib/socket');
 
 // Import Routes
 const authRoutes = require('./routes/authRoutes');
@@ -15,8 +17,7 @@ const historyRoutes = require('./routes/historyRoutes');
 const userRoutes = require('./routes/userRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-
-const app = express();
+const chatRoutes = require('./routes/chatRoutes');
 
 // CORS Configuration
 const allowedOrigins = process.env.CORS_ORIGIN
@@ -51,6 +52,7 @@ app.use('/api/v1/history', historyRoutes);    // UC9
 app.use('/api/v1/users', userRoutes);         // UC10
 app.use('/api/v1/contact', contactRoutes);    // UC11
 app.use('/api/v1/admin', adminRoutes);        // UC12, UC13, UC14
+app.use('/api/v1/chat', chatRoutes);          // UC15 - แชทกับ Admin (Socket.IO)
 
 // Health check
 app.get('/', (req, res) => {
@@ -65,7 +67,8 @@ app.get('/', (req, res) => {
             history: '/api/v1/history',
             users: '/api/v1/users',
             contact: '/api/v1/contact',
-            admin: '/api/v1/admin'
+            admin: '/api/v1/admin',
+            chat: '/api/v1/chat (WebSocket: Socket.IO)'
         }
     });
 });
@@ -106,9 +109,10 @@ const startServer = async () => {
         await sequelize.sync({ alter: true });
         console.log('✅ Database synced successfully');
 
-        app.listen(PORT, () => {
+        server.listen(PORT, () => {
             console.log(`🚀 Server running on port ${PORT}`);
             console.log(`📡 API: http://localhost:${PORT}`);
+            console.log(`💬 Socket.IO: WebSocket ready for chat`);
         });
     } catch (error) {
         console.error('❌ ไม่สามรถเชื่อมต่อฐานข้อมูล PostgreSQL:', error);
