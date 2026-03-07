@@ -29,7 +29,11 @@ const User = sequelize.define('User', {
             msg: 'อีเมลนี้ถูกใช้งานแล้ว'
         },
         validate: {
-            isEmail: { msg: 'รูปแบบอีเมลไม่ถูกต้อง' }
+            validateEmailDomain(value) {
+                if (!/^[^@]+@(gmail|hotmail)\.[a-z]{2,}$/i.test(value)) {
+                    throw new Error('อีเมลต้องใช้ gmail.com หรือ hotmail.com เท่านั้น');
+                }
+            }
         }
     },
     password: {

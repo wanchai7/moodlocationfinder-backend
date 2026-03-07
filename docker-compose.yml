@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -6,18 +8,63 @@ services:
     ports:
       - "5433:5432"
     environment:
-      POSTGRES_DB: mood_place_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ViewWanchai_2547
-      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d mood_place_db" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - mood_network
+
+  backend:
+    build: .
+    container_name: mood_place_backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      NODE_ENV: ${NODE_ENV:-production}
+      JWT_SECRET: ${JWT_SECRET}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "npm run seed && npm start"
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - mood_network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: mood_pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    networks:
+      - mood_network
+    depends_on:
+      - postgres
 
 volumes:
   postgres_data:
     driver: local
+
+networks:
+  mood_network:
+    driver: bridge

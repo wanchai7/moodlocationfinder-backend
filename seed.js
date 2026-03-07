@@ -16,11 +16,11 @@ const seedAdmin = async () => {
     const hashedPassword = await bcrypt.hash('admin123', salt);
 
     const [admin, created] = await User.findOrCreate({
-        where: { email: 'admin@example.com' },
+        where: { email: 'admin@gmail.com' },
         defaults: {
-            firstName: 'แอดมิน',
-            lastName: 'ระบบ',
-            email: 'admin@example.com',
+            firstName: 'Admin',
+            lastName: 'System',
+            email: 'admin@gmail.com',
             password: hashedPassword,
             gender: 'other',
             role: 'admin',

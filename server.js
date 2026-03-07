@@ -95,7 +95,7 @@ const startServer = async () => {
             console.log(`📡 API: http://localhost:${PORT}`);
         });
     } catch (error) {
-        console.error('❌ Failed to start server:', error);
+        console.error('❌ ไม่สามรถเชื่อมต่อฐานข้อมูล PostgreSQL:', error);
         process.exit(1);
     }
 };

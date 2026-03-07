@@ -90,7 +90,7 @@
                     }
                 },
                 {
-                    "name": "สมัคร Admin (Register Admin)",
+                    "name": "สร้าง Admin (Register Admin - Postman)",
                     "event": [
                         {
                             "listen": "test",
@@ -98,8 +98,9 @@
                                 "exec": [
                                     "if (pm.response.code === 201) {",
                                     "    var jsonData = pm.response.json();",
-                                    "    pm.test('สมัคร Admin สำเร็จ', function () {",
-                                    "        pm.expect(jsonData.message).to.eql('สมัครสมาชิกสำเร็จ');",
+                                    "    pm.test('สร้าง Admin สำเร็จ', function () {",
+                                    "        pm.expect(jsonData.message).to.eql('สร้าง Admin สำเร็จ');",
+                                    "        pm.expect(jsonData.user.role).to.eql('admin');",
                                     "    });",
                                     "}"
                                 ],
@@ -117,18 +118,19 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"firstName\": \"Admin\",\n    \"lastName\": \"MoodPlace\",\n    \"email\": \"admin@moodplace.com\",\n    \"password\": \"admin123\",\n    \"gender\": \"male\"\n}"
+                            "raw": "{\n    \"firstName\": \"Admin\",\n    \"lastName\": \"MoodPlace\",\n    \"email\": \"admin@gmail.com\",\n    \"password\": \"admin123\",\n    \"gender\": \"male\"\n}"
                         },
                         "url": {
-                            "raw": "{{baseUrl}}/auth/register",
+                            "raw": "{{baseUrl}}/auth/register-admin",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
                                 "auth",
-                                "register"
+                                "register-admin"
                             ]
-                        }
+                        },
+                        "description": "สร้าง Admin account สำหรับใช้จัดการระบบ (ไม่ต้อง login ก่อน)"
                     }
                 },
                 {
@@ -204,7 +206,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"email\": \"admin@moodplace.com\",\n    \"password\": \"admin123\"\n}"
+                            "raw": "{\n    \"email\": \"admin@gmail.com\",\n    \"password\": \"admin123\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/auth/login",
