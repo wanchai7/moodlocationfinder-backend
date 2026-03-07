@@ -48,6 +48,10 @@ const Place = sequelize.define('Place', {
     longitude: {
         type: DataTypes.FLOAT,
         allowNull: true
+    },
+    googleMapsUrl: {
+        type: DataTypes.TEXT,
+        allowNull: true
     }
 }, {
     tableName: 'places',

@@ -2,16 +2,86 @@ const { Op } = require('sequelize');
 const { User, Place, EmailLog } = require('../models');
 const nodemailer = require('nodemailer');
 
+// ========== Helper: ดึงพิกัดจาก Google Maps URL ==========
+const extractCoordsFromGoogleMaps = (url) => {
+    if (!url || typeof url !== 'string') return null;
+
+    try {
+        // รูปแบบที่ 1: @lat,lng หรือ @lat,lng,zoom
+        // เช่น https://www.google.com/maps/@13.7563,100.5018,15z
+        // เช่น https://www.google.com/maps/place/.../@13.7563,100.5018,15z
+        const atPattern = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+        const atMatch = url.match(atPattern);
+        if (atMatch) {
+            return { latitude: parseFloat(atMatch[1]), longitude: parseFloat(atMatch[2]) };
+        }
+
+        // รูปแบบที่ 2: ?q=lat,lng หรือ query=lat,lng
+        // เช่น https://www.google.com/maps?q=13.7563,100.5018
+        const queryPattern = /[?&](?:q|query)=(-?\d+\.\d+),(-?\d+\.\d+)/;
+        const queryMatch = url.match(queryPattern);
+        if (queryMatch) {
+            return { latitude: parseFloat(queryMatch[1]), longitude: parseFloat(queryMatch[2]) };
+        }
+
+        // รูปแบบที่ 3: /dir/ หรือ !3d...!4d...
+        // เช่น https://www.google.com/maps/dir//13.7563,100.5018
+        const dirPattern = /\/dir\/\/(-?\d+\.\d+),(-?\d+\.\d+)/;
+        const dirMatch = url.match(dirPattern);
+        if (dirMatch) {
+            return { latitude: parseFloat(dirMatch[1]), longitude: parseFloat(dirMatch[2]) };
+        }
+
+        // รูปแบบที่ 4: !3d (latitude) และ !4d (longitude)
+        // เช่น ...!3d13.7563!4d100.5018...
+        const dataPattern = /!3d(-?\d+\.\d+).*!4d(-?\d+\.\d+)/;
+        const dataMatch = url.match(dataPattern);
+        if (dataMatch) {
+            return { latitude: parseFloat(dataMatch[1]), longitude: parseFloat(dataMatch[2]) };
+        }
+
+        // รูปแบบที่ 5: /place/lat,lng
+        // เช่น https://www.google.com/maps/place/13.7563,100.5018
+        const placeCoordPattern = /\/place\/(-?\d+\.\d+),(-?\d+\.\d+)/;
+        const placeCoordMatch = url.match(placeCoordPattern);
+        if (placeCoordMatch) {
+            return { latitude: parseFloat(placeCoordMatch[1]), longitude: parseFloat(placeCoordMatch[2]) };
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error extracting coords from Google Maps URL:', error);
+        return null;
+    }
+};
+
 // ========== UC12: จัดการสถานที่ให้เข้ากับอารมณ์ ==========
 
 // สร้างสถานที่ใหม่ (Admin)
 // POST /api/admin/places
 const createPlace = async (req, res) => {
     try {
-        const { name, description, category, moods, personality, images, address, latitude, longitude } = req.body;
+        const { name, description, category, moods, personality, images, address, latitude, longitude, googleMapsUrl } = req.body;
 
         if (!name || !category) {
             return res.status(400).json({ message: 'กรุณากรอกชื่อและหมวดหมู่สถานที่' });
+        }
+
+        // ดึงพิกัดจาก Google Maps URL (ถ้ามี)
+        let finalLatitude = latitude;
+        let finalLongitude = longitude;
+
+        if (googleMapsUrl) {
+            const coords = extractCoordsFromGoogleMaps(googleMapsUrl);
+            if (coords) {
+                finalLatitude = coords.latitude;
+                finalLongitude = coords.longitude;
+            } else {
+                return res.status(400).json({
+                    message: 'ไม่สามารถดึงพิกัดจากลิงก์ Google Maps ได้ กรุณาตรวจสอบลิงก์อีกครั้ง',
+                    hint: 'ลิงก์ควรเป็นรูปแบบ เช่น https://www.google.com/maps/place/.../@13.7563,100.5018,15z'
+                });
+            }
         }
 
         const place = await Place.create({
@@ -22,8 +92,9 @@ const createPlace = async (req, res) => {
             personality: personality || [],
             images: images || [],
             address,
-            latitude,
-            longitude
+            latitude: finalLatitude,
+            longitude: finalLongitude,
+            googleMapsUrl: googleMapsUrl || null
         });
 
         res.status(201).json({
@@ -74,7 +145,7 @@ const updatePlace = async (req, res) => {
             return res.status(404).json({ message: 'ไม่พบสถานที่' });
         }
 
-        const { name, description, category, moods, personality, images, address, latitude, longitude } = req.body;
+        const { name, description, category, moods, personality, images, address, latitude, longitude, googleMapsUrl } = req.body;
 
         if (name) place.name = name;
         if (description !== undefined) place.description = description;
@@ -83,8 +154,25 @@ const updatePlace = async (req, res) => {
         if (personality) place.personality = personality;
         if (images) place.images = images;
         if (address !== undefined) place.address = address;
-        if (latitude !== undefined) place.latitude = latitude;
-        if (longitude !== undefined) place.longitude = longitude;
+
+        // ถ้าส่ง googleMapsUrl มา ให้ดึงพิกัดจากลิงก์
+        if (googleMapsUrl) {
+            const coords = extractCoordsFromGoogleMaps(googleMapsUrl);
+            if (coords) {
+                place.latitude = coords.latitude;
+                place.longitude = coords.longitude;
+                place.googleMapsUrl = googleMapsUrl;
+            } else {
+                return res.status(400).json({
+                    message: 'ไม่สามารถดึงพิกัดจากลิงก์ Google Maps ได้ กรุณาตรวจสอบลิงก์อีกครั้ง',
+                    hint: 'ลิงก์ควรเป็นรูปแบบ เช่น https://www.google.com/maps/place/.../@13.7563,100.5018,15z'
+                });
+            }
+        } else {
+            // ยังรองรับการส่ง lat/lng ตรงๆ เหมือนเดิม
+            if (latitude !== undefined) place.latitude = latitude;
+            if (longitude !== undefined) place.longitude = longitude;
+        }
 
         await place.save();
 
