@@ -240,7 +240,7 @@ const getAllUsers = async (req, res) => {
     }
 };
 
-// แบน User
+// แบน User ถาวร
 // PUT /api/admin/users/:id/ban
 const banUser = async (req, res) => {
     try {
@@ -254,10 +254,11 @@ const banUser = async (req, res) => {
         }
 
         user.status = 'banned';
+        user.bannedUntil = null;
         await user.save();
 
         res.json({
-            message: 'ระงับการใช้งานเรียบร้อยแล้ว',
+            message: 'ระงับการใช้งานถาวรเรียบร้อยแล้ว',
             user
         });
     } catch (error) {
@@ -276,6 +277,7 @@ const unbanUser = async (req, res) => {
         }
 
         user.status = 'active';
+        user.bannedUntil = null;
         await user.save();
 
         res.json({
@@ -284,6 +286,43 @@ const unbanUser = async (req, res) => {
         });
     } catch (error) {
         console.error('UnbanUser error:', error);
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในระบบ' });
+    }
+};
+
+// ระงับผู้ใช้ชั่วคราว
+// PUT /api/admin/users/:id/suspend
+const suspendUser = async (req, res) => {
+    try {
+        const { durationDays, durationHours, durationMinutes } = req.body;
+        const user = await User.findByPk(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'ไม่พบผู้ใช้งาน' });
+        }
+
+        if (user.role === 'admin') {
+            return res.status(400).json({ message: 'ไม่สามารถระงับผู้ดูแลระบบได้' });
+        }
+
+        let totalMs = 0;
+        if (durationDays) totalMs += parseInt(durationDays) * 24 * 60 * 60 * 1000;
+        if (durationHours) totalMs += parseInt(durationHours) * 60 * 60 * 1000;
+        if (durationMinutes) totalMs += parseInt(durationMinutes) * 60 * 1000;
+
+        if (totalMs === 0) {
+            return res.status(400).json({ message: 'กรุณาระบุระยะเวลาที่ต้องการระงับอย่างน้อย 1 นาที' });
+        }
+
+        user.status = 'banned';
+        user.bannedUntil = new Date(Date.now() + totalMs);
+        await user.save();
+
+        res.json({
+            message: `ระงับการใช้งานชั่วคราวเรียบร้อยแล้ว จะปลดแบนในวันที่ ${user.bannedUntil.toLocaleString('th-TH')}`,
+            user
+        });
+    } catch (error) {
+        console.error('SuspendUser error:', error);
         res.status(500).json({ message: 'เกิดข้อผิดพลาดในระบบ' });
     }
 };
@@ -517,6 +556,7 @@ module.exports = {
     getAllUsers,
     banUser,
     unbanUser,
+    suspendUser,
     deleteUser,
     sendEmail,
     getEmailLogs,

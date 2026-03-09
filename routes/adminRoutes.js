@@ -8,6 +8,7 @@ const {
     getAllUsers,
     banUser,
     unbanUser,
+    suspendUser,
     deleteUser,
     sendEmail,
     getEmailLogs,
@@ -28,6 +29,7 @@ router.delete('/places/:id', deletePlace);
 router.get('/users', getAllUsers);
 router.put('/users/:id/ban', banUser);
 router.put('/users/:id/unban', unbanUser);
+router.put('/users/:id/suspend', suspendUser);
 router.delete('/users/:id', deleteUser);
 
 // ========== UC14: ส่งเมล ==========

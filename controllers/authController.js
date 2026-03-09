@@ -93,11 +93,21 @@ const login = async (req, res) => {
 
     // ตรวจสอบสถานะ
     if (user.status === "banned") {
-      return res
-        .status(403)
-        .json({
-          message: "บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ",
-        });
+      if (user.bannedUntil && new Date() > user.bannedUntil) {
+        // สิ้นสุดระยะเวลาการระงับ ให้ใช้งานได้ตามปกติ
+        user.status = "active";
+        user.bannedUntil = null;
+        await user.save();
+      } else {
+        const untilMsg = user.bannedUntil 
+          ? ` ถึงวันที่ ${new Date(user.bannedUntil).toLocaleString('th-TH')} ` 
+          : 'ถาวร ';
+        return res
+          .status(403)
+          .json({
+            message: `บัญชีของคุณถูกระงับการใช้งาน${untilMsg}กรุณาติดต่อผู้ดูแลระบบ`,
+          });
+      }
     }
 
     // ตรวจสอบรหัสผ่าน
