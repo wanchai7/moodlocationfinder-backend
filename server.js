@@ -53,7 +53,7 @@ app.use('/api/v1/history', historyRoutes);    // UC9
 app.use('/api/v1/users', userRoutes);         // UC10
 app.use('/api/v1/contact', contactRoutes);    // UC11
 app.use('/api/v1/admin', adminRoutes);        // UC12, UC13, UC14
-app.use('/api/v1/chat', chatRoutes);          // UC15 - แชทกับ Admin (Socket.IO)
+app.use('/api/v1/messages', chatRoutes);      // ระบบแชท 1-on-1 (ดัดแปลงจาก mern-chat)
 
 // Health check
 app.get('/', (req, res) => {
@@ -69,7 +69,7 @@ app.get('/', (req, res) => {
             users: '/api/v1/users',
             contact: '/api/v1/contact',
             admin: '/api/v1/admin',
-            chat: '/api/v1/chat (WebSocket: Socket.IO)'
+            messages: '/api/v1/messages (WebSocket: Socket.IO)'
         }
     });
 });

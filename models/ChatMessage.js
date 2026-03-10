@@ -7,19 +7,15 @@ const ChatMessage = sequelize.define('ChatMessage', {
         primaryKey: true,
         autoIncrement: true
     },
-    chatRoomId: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
     senderId: {
         type: DataTypes.INTEGER,
         allowNull: false
     },
-    senderRole: {
-        type: DataTypes.ENUM('user', 'admin'),
+    receiverId: {
+        type: DataTypes.INTEGER,
         allowNull: false
     },
-    message: {
+    text: {
         type: DataTypes.TEXT,
         allowNull: true
     },

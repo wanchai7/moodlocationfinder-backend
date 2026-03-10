@@ -6,7 +6,6 @@ const Favorite = require('./Favorite');
 const History = require('./History');
 const Contact = require('./Contact');
 const EmailLog = require('./EmailLog');
-const ChatRoom = require('./ChatRoom');
 const ChatMessage = require('./ChatMessage');
 
 // ========== Associations ==========
@@ -45,21 +44,13 @@ EmailLog.belongsTo(User, { foreignKey: 'sentBy', as: 'sender' });
 
 // ========== Chat Associations ==========
 
-// User -> ChatRooms (as user)
-User.hasMany(ChatRoom, { foreignKey: 'userId', as: 'chatRoomsAsUser' });
-ChatRoom.belongsTo(User, { foreignKey: 'userId', as: 'chatUser' });
-
-// User -> ChatRooms (as admin)
-User.hasMany(ChatRoom, { foreignKey: 'adminId', as: 'chatRoomsAsAdmin' });
-ChatRoom.belongsTo(User, { foreignKey: 'adminId', as: 'chatAdmin' });
-
-// ChatRoom -> ChatMessages
-ChatRoom.hasMany(ChatMessage, { foreignKey: 'chatRoomId', as: 'messages' });
-ChatMessage.belongsTo(ChatRoom, { foreignKey: 'chatRoomId', as: 'chatRoom' });
-
 // User -> ChatMessages (sender)
 User.hasMany(ChatMessage, { foreignKey: 'senderId', as: 'sentMessages' });
 ChatMessage.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
+
+// User -> ChatMessages (receiver)
+User.hasMany(ChatMessage, { foreignKey: 'receiverId', as: 'receivedMessages' });
+ChatMessage.belongsTo(User, { foreignKey: 'receiverId', as: 'receiver' });
 
 module.exports = {
     sequelize,
@@ -70,6 +61,5 @@ module.exports = {
     History,
     Contact,
     EmailLog,
-    ChatRoom,
     ChatMessage
 };
