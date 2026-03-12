@@ -1,6 +1,5 @@
 const { Op } = require('sequelize');
-const { User, Place, EmailLog } = require('../models');
-const nodemailer = require('nodemailer');
+const { User, Place } = require('../models');
 
 // ========== Helper: ดึงพิกัดจาก Google Maps URL ==========
 const extractCoordsFromGoogleMaps = (url) => {
@@ -55,7 +54,7 @@ const extractCoordsFromGoogleMaps = (url) => {
     }
 };
 
-// ========== UC12: จัดการสถานที่ให้เข้ากับอารมณ์ ==========
+// ========== จัดการสถานที่ให้เข้ากับอารมณ์ ==========
 
 // สร้างสถานที่ใหม่ (Admin)
 // POST /api/admin/places
@@ -203,7 +202,7 @@ const deletePlace = async (req, res) => {
     }
 };
 
-// ========== UC13: การจัดการ User ==========
+// ========== การจัดการ User ==========
 
 // ดึง User ทั้งหมด
 // GET /api/admin/users
@@ -357,197 +356,6 @@ const deleteUser = async (req, res) => {
     }
 };
 
-// ========== UC14: ส่งเมล ==========
-
-// สร้าง Nodemailer Transporter
-const createTransporter = () => {
-    return nodemailer.createTransport({
-        host: process.env.EMAIL_HOST,
-        port: process.env.EMAIL_PORT,
-        secure: false,
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        }
-    });
-};
-
-// Email Templates
-const emailTemplates = {
-    welcome: (userName) => ({
-        subject: 'ยินดีต้อนรับสู่ Mood & Place! 🎉',
-        html: `
-      <div style="font-family: 'Segoe UI', Tahoma, Geneva, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb; border-radius: 12px;">
-        <h1 style="color: #6366f1; text-align: center;">ยินดีต้อนรับ ${userName}! 🎉</h1>
-        <p style="font-size: 16px; line-height: 1.6; color: #374151;">สวัสดีครับ/ค่ะ ${userName},</p>
-        <p style="font-size: 16px; line-height: 1.6; color: #374151;">ขอบคุณที่สมัครสมาชิกกับ <strong>Mood & Place</strong> เราพร้อมช่วยคุณค้นหาสถานที่ที่ตรงกับอารมณ์ของคุณ!</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="#" style="background-color: #6366f1; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">เริ่มต้นใช้งาน</a>
-        </div>
-        <p style="font-size: 14px; color: #6b7280; text-align: center;">ทีมงาน Mood & Place</p>
-      </div>
-    `
-    }),
-    newsletter: (subject, content) => ({
-        subject,
-        html: `
-      <div style="font-family: 'Segoe UI', Tahoma, Geneva, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb; border-radius: 12px;">
-        <h1 style="color: #6366f1; text-align: center;">${subject}</h1>
-        <div style="font-size: 16px; line-height: 1.6; color: #374151;">${content}</div>
-        <p style="font-size: 14px; color: #6b7280; text-align: center; margin-top: 30px;">ทีมงาน Mood & Place</p>
-      </div>
-    `
-    }),
-    custom: (subject, body) => ({
-        subject,
-        html: body
-    })
-};
-
-// ส่งอีเมล
-// POST /api/admin/send-email
-const sendEmail = async (req, res) => {
-    try {
-        const { recipientEmail, template, subject, body, customData } = req.body;
-
-        if (!recipientEmail || !template) {
-            return res.status(400).json({ message: 'กรุณาระบุอีเมลผู้รับและ Template' });
-        }
-
-        let emailContent;
-        switch (template) {
-            case 'welcome':
-                emailContent = emailTemplates.welcome(customData?.userName || 'User');
-                break;
-            case 'newsletter':
-                emailContent = emailTemplates.newsletter(subject, body);
-                break;
-            case 'custom':
-                emailContent = emailTemplates.custom(subject, body);
-                break;
-            default:
-                return res.status(400).json({
-                    message: 'Template ไม่ถูกต้อง',
-                    availableTemplates: ['welcome', 'newsletter', 'custom']
-                });
-        }
-
-        const transporter = createTransporter();
-
-        const mailOptions = {
-            from: `"Mood & Place" <${process.env.EMAIL_USER}>`,
-            to: recipientEmail,
-            subject: emailContent.subject,
-            html: emailContent.html
-        };
-
-        // ส่งแบบ Asynchronous
-        try {
-            await transporter.sendMail(mailOptions);
-
-            // บันทึกประวัติ
-            await EmailLog.create({
-                recipientEmail,
-                subject: emailContent.subject,
-                body: emailContent.html,
-                template,
-                status: 'sent',
-                sentBy: req.user.id
-            });
-
-            res.json({
-                message: 'ส่งอีเมลเรียบร้อยแล้ว',
-                status: 'sent'
-            });
-        } catch (mailError) {
-            // บันทึกประวัติ error
-            await EmailLog.create({
-                recipientEmail,
-                subject: emailContent.subject,
-                body: emailContent.html,
-                template,
-                status: 'failed',
-                errorMessage: mailError.message,
-                sentBy: req.user.id
-            });
-
-            res.status(500).json({
-                message: 'ส่งอีเมลไม่สำเร็จ',
-                error: mailError.message,
-                status: 'failed'
-            });
-        }
-    } catch (error) {
-        console.error('SendEmail error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในระบบ' });
-    }
-};
-
-// ดูประวัติการส่งเมล
-// GET /api/admin/email-logs
-const getEmailLogs = async (req, res) => {
-    try {
-        const logs = await EmailLog.findAll({
-            include: [{
-                model: User,
-                as: 'sender',
-                attributes: ['id', 'firstName', 'lastName']
-            }],
-            order: [['createdAt', 'DESC']]
-        });
-
-        res.json({
-            count: logs.length,
-            logs
-        });
-    } catch (error) {
-        console.error('GetEmailLogs error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในระบบ' });
-    }
-};
-
-// ส่งเมลใหม่ (Resend)
-// POST /api/admin/email-logs/:id/resend
-const resendEmail = async (req, res) => {
-    try {
-        const log = await EmailLog.findByPk(req.params.id);
-        if (!log) {
-            return res.status(404).json({ message: 'ไม่พบประวัติการส่ง' });
-        }
-
-        const transporter = createTransporter();
-
-        try {
-            await transporter.sendMail({
-                from: `"Mood & Place" <${process.env.EMAIL_USER}>`,
-                to: log.recipientEmail,
-                subject: log.subject,
-                html: log.body
-            });
-
-            // บันทึกใหม่
-            await EmailLog.create({
-                recipientEmail: log.recipientEmail,
-                subject: log.subject,
-                body: log.body,
-                template: log.template,
-                status: 'sent',
-                sentBy: req.user.id
-            });
-
-            res.json({ message: 'ส่งอีเมลใหม่เรียบร้อยแล้ว', status: 'sent' });
-        } catch (mailError) {
-            res.status(500).json({
-                message: 'ส่งอีเมลใหม่ไม่สำเร็จ',
-                error: mailError.message
-            });
-        }
-    } catch (error) {
-        console.error('ResendEmail error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในระบบ' });
-    }
-};
-
 module.exports = {
     createPlace,
     updatePlaceMoods,
@@ -557,8 +365,5 @@ module.exports = {
     banUser,
     unbanUser,
     suspendUser,
-    deleteUser,
-    sendEmail,
-    getEmailLogs,
-    resendEmail
+    deleteUser
 };

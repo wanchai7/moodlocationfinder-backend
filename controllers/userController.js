@@ -1,8 +1,9 @@
 const { User } = require('../models');
 const path = require('path');
 const fs = require('fs');
+const cloudinary = require('../config/cloudinary');
 
-// ========== UC10: แก้ไขโปรไฟล์ ==========
+// ========== แก้ไขโปรไฟล์ ==========
 // PUT /api/users/profile
 const updateProfile = async (req, res) => {
     try {
@@ -20,14 +21,40 @@ const updateProfile = async (req, res) => {
 
         // อัปเดตรูปโปรไฟล์
         if (req.file) {
+            // อัปโหลดไฟล์ไปยัง Cloudinary
+            const uploadResponse = await cloudinary.uploader.upload(req.file.path, {
+                folder: 'profile_images',
+                resource_type: 'image'
+            });
+
             // ลบรูปเก่า (ถ้ามี)
             if (user.profileImage) {
-                const oldPath = path.join(__dirname, '..', user.profileImage);
-                if (fs.existsSync(oldPath)) {
-                    fs.unlinkSync(oldPath);
+                if (user.profileImage.includes('cloudinary.com')) {
+                    // ถ้าเป็นรูปบน Cloudinary พยายามลบรูปเก่าออกเพื่อไม่ให้รก
+                    try {
+                        const urlParts = user.profileImage.split('/');
+                        const fileName = urlParts[urlParts.length - 1];
+                        const publicId = `profile_images/${fileName.split('.')[0]}`;
+                        await cloudinary.uploader.destroy(publicId);
+                    } catch (err) {
+                        console.error('Error deleting old image from Cloudinary:', err);
+                    }
+                } else {
+                    // ถ้ายังเป็นรูปบน Local
+                    const oldPath = path.join(__dirname, '..', user.profileImage);
+                    if (fs.existsSync(oldPath)) {
+                        fs.unlinkSync(oldPath);
+                    }
                 }
             }
-            user.profileImage = `/uploads/${req.file.filename}`;
+
+            // ใช้ URL จาก Cloudinary
+            user.profileImage = uploadResponse.secure_url;
+
+            // ลบไฟล์ชั่วคราวใน Local (uploads/...)
+            if (fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
         }
 
         await user.save();

@@ -12,13 +12,13 @@ const {
 // ดึง Moods ทั้งหมด (ต้องอยู่ก่อน /:id)
 router.get('/moods/list', getAllMoods);
 
-// UC3: กดเลือกความรู้สึก
+// กดเลือกความรู้สึก
 router.get('/mood/:mood', getPlacesByMood);
 
-// UC4: พิมพ์ค้นหาความรู้สึก
+// พิมพ์ค้นหาความรู้สึก
 router.get('/search', searchByMoodText);
 
-// UC6: เลือกหมวดหมู่
+// เลือกหมวดหมู่
 router.get('/category/:category', getPlacesByCategory);
 
 // ดึงสถานที่ทั้งหมด
