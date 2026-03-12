@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: mood_place_db
+    container_name: moodlocationfinder-db
     restart: unless-stopped
     ports:
       - "5433:5432"
@@ -23,7 +21,7 @@ services:
 
   backend:
     build: .
-    container_name: mood_place_backend
+    container_name: moodlocationfinder-backend
     restart: unless-stopped
     ports:
       - "5000:5000"
