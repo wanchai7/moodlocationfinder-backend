@@ -1,8 +1,10 @@
 const { User } = require('../models');
 const path = require('path');
 const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+const supabase = require('../config/supabase');
 
-// ========== UC10: แก้ไขโปรไฟล์ ==========
+// ========== แก้ไขโปรไฟล์ ==========
 // PUT /api/users/profile
 const updateProfile = async (req, res) => {
     try {
@@ -20,14 +22,61 @@ const updateProfile = async (req, res) => {
 
         // อัปเดตรูปโปรไฟล์
         if (req.file) {
+            const bucketName = process.env.SUPABASE_BUCKET || 'moodlocationfinder';
+            const fileExt = path.extname(req.file.originalname) || '.jpg';
+            const fileName = `profile_images/${uuidv4()}${fileExt}`;
+            const fileBuffer = fs.readFileSync(req.file.path);
+            
+            // อัปโหลดไฟล์ไปยัง Supabase
+            const { data, error } = await supabase.storage
+                .from(bucketName)
+                .upload(fileName, fileBuffer, {
+                    contentType: req.file.mimetype || 'image/jpeg',
+                    upsert: true
+                });
+
+            if (error) {
+                console.error("Supabase upload error:", error);
+                return res.status(500).json({ message: 'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ' });
+            }
+
+            // รับ URL จาก Supabase
+            const { data: urlData } = supabase.storage
+                .from(bucketName)
+                .getPublicUrl(fileName);
+
+            const newImageUrl = urlData.publicUrl;
+
             // ลบรูปเก่า (ถ้ามี)
             if (user.profileImage) {
-                const oldPath = path.join(__dirname, '..', user.profileImage);
-                if (fs.existsSync(oldPath)) {
-                    fs.unlinkSync(oldPath);
+                try {
+                    if (user.profileImage.includes('supabase.co')) {
+                        // พยายามแยกว่าไฟล์เก็บอยู่ที่ไหน (profile_images/...)
+                        const urlObj = new URL(user.profileImage);
+                        const pathParts = urlObj.pathname.split('/');
+                        const bucketIndex = pathParts.indexOf(bucketName);
+                        if (bucketIndex !== -1) {
+                            const oldFilePath = pathParts.slice(bucketIndex + 1).join('/');
+                            await supabase.storage.from(bucketName).remove([oldFilePath]);
+                        }
+                    } else if (!user.profileImage.includes('cloudinary.com') && !user.profileImage.startsWith('http')) {
+                        // ถ้ายังเป็นรูปบน Local
+                        const oldPath = path.join(__dirname, '..', user.profileImage);
+                        if (fs.existsSync(oldPath)) {
+                            fs.unlinkSync(oldPath);
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error deleting old image:', err);
                 }
             }
-            user.profileImage = `/uploads/${req.file.filename}`;
+
+            user.profileImage = newImageUrl;
+
+            // ลบไฟล์ชั่วคราวใน Local (uploads/...)
+            if (fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
         }
 
         await user.save();

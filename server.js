@@ -16,9 +16,9 @@ const reviewRoutes = require('./routes/reviewRoutes');
 const favoriteRoutes = require('./routes/favoriteRoutes');
 const historyRoutes = require('./routes/historyRoutes');
 const userRoutes = require('./routes/userRoutes');
-const contactRoutes = require('./routes/contactRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const aiSearchRoutes = require('./routes/aiSearchRoutes');
 
 // CORS Configuration
 const allowedOrigins = process.env.CORS_ORIGIN
@@ -51,9 +51,9 @@ app.use('/api/v1/reviews', reviewRoutes);     // UC7
 app.use('/api/v1/favorites', favoriteRoutes); // UC8
 app.use('/api/v1/history', historyRoutes);    // UC9
 app.use('/api/v1/users', userRoutes);         // UC10
-app.use('/api/v1/contact', contactRoutes);    // UC11
 app.use('/api/v1/admin', adminRoutes);        // UC12, UC13, UC14
 app.use('/api/v1/messages', chatRoutes);      // ระบบแชท 1-on-1 (ดัดแปลงจาก mern-chat)
+app.use('/api/v1/ai', aiSearchRoutes);        // AI endpoints
 
 // Health check
 app.get('/', (req, res) => {
@@ -67,9 +67,9 @@ app.get('/', (req, res) => {
             favorites: '/api/v1/favorites',
             history: '/api/v1/history',
             users: '/api/v1/users',
-            contact: '/api/v1/contact',
             admin: '/api/v1/admin',
-            messages: '/api/v1/messages (WebSocket: Socket.IO)'
+            messages: '/api/v1/messages (WebSocket: Socket.IO)',
+            ai: '/api/v1/ai'
         }
     });
 });
