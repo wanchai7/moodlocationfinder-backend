@@ -1,7 +1,8 @@
 const { User } = require('../models');
 const path = require('path');
 const fs = require('fs');
-const cloudinary = require('../config/cloudinary');
+const { v4: uuidv4 } = require('uuid');
+const supabase = require('../config/supabase');
 
 // ========== แก้ไขโปรไฟล์ ==========
 // PUT /api/users/profile
@@ -21,35 +22,56 @@ const updateProfile = async (req, res) => {
 
         // อัปเดตรูปโปรไฟล์
         if (req.file) {
-            // อัปโหลดไฟล์ไปยัง Cloudinary
-            const uploadResponse = await cloudinary.uploader.upload(req.file.path, {
-                folder: 'profile_images',
-                resource_type: 'image'
-            });
+            const bucketName = process.env.SUPABASE_BUCKET || 'moodlocationfinder';
+            const fileExt = path.extname(req.file.originalname) || '.jpg';
+            const fileName = `profile_images/${uuidv4()}${fileExt}`;
+            const fileBuffer = fs.readFileSync(req.file.path);
+            
+            // อัปโหลดไฟล์ไปยัง Supabase
+            const { data, error } = await supabase.storage
+                .from(bucketName)
+                .upload(fileName, fileBuffer, {
+                    contentType: req.file.mimetype || 'image/jpeg',
+                    upsert: true
+                });
+
+            if (error) {
+                console.error("Supabase upload error:", error);
+                return res.status(500).json({ message: 'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ' });
+            }
+
+            // รับ URL จาก Supabase
+            const { data: urlData } = supabase.storage
+                .from(bucketName)
+                .getPublicUrl(fileName);
+
+            const newImageUrl = urlData.publicUrl;
 
             // ลบรูปเก่า (ถ้ามี)
             if (user.profileImage) {
-                if (user.profileImage.includes('cloudinary.com')) {
-                    // ถ้าเป็นรูปบน Cloudinary พยายามลบรูปเก่าออกเพื่อไม่ให้รก
-                    try {
-                        const urlParts = user.profileImage.split('/');
-                        const fileName = urlParts[urlParts.length - 1];
-                        const publicId = `profile_images/${fileName.split('.')[0]}`;
-                        await cloudinary.uploader.destroy(publicId);
-                    } catch (err) {
-                        console.error('Error deleting old image from Cloudinary:', err);
+                try {
+                    if (user.profileImage.includes('supabase.co')) {
+                        // พยายามแยกว่าไฟล์เก็บอยู่ที่ไหน (profile_images/...)
+                        const urlObj = new URL(user.profileImage);
+                        const pathParts = urlObj.pathname.split('/');
+                        const bucketIndex = pathParts.indexOf(bucketName);
+                        if (bucketIndex !== -1) {
+                            const oldFilePath = pathParts.slice(bucketIndex + 1).join('/');
+                            await supabase.storage.from(bucketName).remove([oldFilePath]);
+                        }
+                    } else if (!user.profileImage.includes('cloudinary.com') && !user.profileImage.startsWith('http')) {
+                        // ถ้ายังเป็นรูปบน Local
+                        const oldPath = path.join(__dirname, '..', user.profileImage);
+                        if (fs.existsSync(oldPath)) {
+                            fs.unlinkSync(oldPath);
+                        }
                     }
-                } else {
-                    // ถ้ายังเป็นรูปบน Local
-                    const oldPath = path.join(__dirname, '..', user.profileImage);
-                    if (fs.existsSync(oldPath)) {
-                        fs.unlinkSync(oldPath);
-                    }
+                } catch (err) {
+                    console.error('Error deleting old image:', err);
                 }
             }
 
-            // ใช้ URL จาก Cloudinary
-            user.profileImage = uploadResponse.secure_url;
+            user.profileImage = newImageUrl;
 
             // ลบไฟล์ชั่วคราวใน Local (uploads/...)
             if (fs.existsSync(req.file.path)) {
