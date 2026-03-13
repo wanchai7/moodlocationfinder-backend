@@ -1,7 +1,7 @@
 const { ChatMessage, User } = require('../models');
 const { getReceiverSocketId, io } = require('../lib/socket');
 const { Op } = require('sequelize');
-const cloudinary = require('../config/cloudinary');
+
 const { v4: uuidv4 } = require('uuid');
 const supabase = require('../config/supabase');
 
@@ -91,7 +91,7 @@ exports.sendMessage = async (req, res) => {
 
         let imageUrl = null;
         if (image) {
-            const bucketName = process.env.SUPABASE_BUCKET || 'moodlocationfinder';
+            const bucketName = process.env.SUPABASE_BUCKET || 'uploads';
             // Upload base64 image to Supabase
             const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
             let buffer;
