@@ -9,10 +9,7 @@ const {
     banUser,
     unbanUser,
     suspendUser,
-    deleteUser,
-    sendEmail,
-    getEmailLogs,
-    resendEmail
+    deleteUser
 } = require('../controllers/adminController');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
@@ -31,10 +28,5 @@ router.put('/users/:id/ban', banUser);
 router.put('/users/:id/unban', unbanUser);
 router.put('/users/:id/suspend', suspendUser);
 router.delete('/users/:id', deleteUser);
-
-// ========== UC14: ส่งเมล ==========
-router.post('/send-email', sendEmail);
-router.get('/email-logs', getEmailLogs);
-router.post('/email-logs/:id/resend', resendEmail);
 
 module.exports = router;

@@ -2,6 +2,8 @@ const { ChatMessage, User } = require('../models');
 const { getReceiverSocketId, io } = require('../lib/socket');
 const { Op } = require('sequelize');
 const cloudinary = require('../config/cloudinary');
+const { v4: uuidv4 } = require('uuid');
+const supabase = require('../config/supabase');
 
 exports.getUsersForSidebar = async (req, res) => {
     try {
@@ -89,12 +91,38 @@ exports.sendMessage = async (req, res) => {
 
         let imageUrl = null;
         if (image) {
-            // Upload base64 image to cloudinary
-            const uploadResponse = await cloudinary.uploader.upload(image, {
-                folder: 'chat_images',
-                resource_type: 'image'
-            });
-            imageUrl = uploadResponse.secure_url;
+            const bucketName = process.env.SUPABASE_BUCKET || 'moodlocationfinder';
+            // Upload base64 image to Supabase
+            const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+            let buffer;
+            let contentType = 'image/jpeg';
+            if (matches && matches.length === 3) {
+                contentType = matches[1];
+                buffer = Buffer.from(matches[2], 'base64');
+            } else {
+                buffer = Buffer.from(image, 'base64');
+            }
+            
+            const fileExt = contentType.split('/')[1] || 'jpg';
+            const fileName = `chat_images/${uuidv4()}.${fileExt}`;
+            
+            const { data, error } = await supabase.storage
+              .from(bucketName)
+              .upload(fileName, buffer, {
+                contentType: contentType,
+                upsert: true
+              });
+              
+            if (error) {
+                console.error("Supabase upload error:", error);
+                return res.status(500).json({ error: "Failed to upload image to Supabase" });
+            }
+            
+            const { data: urlData } = supabase.storage
+              .from(bucketName)
+              .getPublicUrl(fileName);
+              
+            imageUrl = urlData.publicUrl;
         }
 
         const newMessage = await ChatMessage.create({

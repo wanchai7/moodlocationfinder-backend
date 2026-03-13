@@ -4,8 +4,6 @@ const Place = require('./Place');
 const Review = require('./Review');
 const Favorite = require('./Favorite');
 const History = require('./History');
-const Contact = require('./Contact');
-const EmailLog = require('./EmailLog');
 const ChatMessage = require('./ChatMessage');
 
 // ========== Associations ==========
@@ -34,14 +32,6 @@ History.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Place.hasMany(History, { foreignKey: 'placeId', as: 'histories' });
 History.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
 
-// User -> Contact
-User.hasMany(Contact, { foreignKey: 'userId', as: 'contacts' });
-Contact.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-
-// User -> EmailLog (sentBy)
-User.hasMany(EmailLog, { foreignKey: 'sentBy', as: 'emailLogs' });
-EmailLog.belongsTo(User, { foreignKey: 'sentBy', as: 'sender' });
-
 // ========== Chat Associations ==========
 
 // User -> ChatMessages (sender)
@@ -59,7 +49,5 @@ module.exports = {
     Review,
     Favorite,
     History,
-    Contact,
-    EmailLog,
     ChatMessage
 };
