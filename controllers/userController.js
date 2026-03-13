@@ -22,7 +22,7 @@ const updateProfile = async (req, res) => {
 
         // อัปเดตรูปโปรไฟล์
         if (req.file) {
-            const bucketName = process.env.SUPABASE_BUCKET || 'moodlocationfinder';
+            const bucketName = process.env.SUPABASE_BUCKET || 'uploads';
             const fileExt = path.extname(req.file.originalname) || '.jpg';
             const fileName = `profile_images/${uuidv4()}${fileExt}`;
             const fileBuffer = fs.readFileSync(req.file.path);

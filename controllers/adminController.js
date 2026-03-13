@@ -1,5 +1,9 @@
 const { Op } = require('sequelize');
 const { User, Place } = require('../models');
+const path = require('path');
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+const supabase = require('../config/supabase');
 
 // ========== Helper: ดึงพิกัดจาก Google Maps URL ==========
 const extractCoordsFromGoogleMaps = (url) => {
@@ -83,13 +87,57 @@ const createPlace = async (req, res) => {
             }
         }
 
+        let parsedImages = [];
+        if (images) {
+            try { parsedImages = typeof images === 'string' ? JSON.parse(images) : images; } catch (e) { parsedImages = Array.isArray(images) ? images : [images]; }
+        }
+        let parsedMoods = [];
+        if (moods) {
+            try { parsedMoods = typeof moods === 'string' ? JSON.parse(moods) : moods; } catch (e) { parsedMoods = Array.isArray(moods) ? moods : [moods]; }
+        }
+        let parsedPersonality = [];
+        if (personality) {
+            try { parsedPersonality = typeof personality === 'string' ? JSON.parse(personality) : personality; } catch (e) { parsedPersonality = Array.isArray(personality) ? personality : [personality]; }
+        }
+
+        let uploadedImages = [];
+        if (req.files && req.files.length > 0) {
+            const bucketName = process.env.SUPABASE_BUCKET || 'uploads';
+            for (const file of req.files) {
+                const fileExt = path.extname(file.originalname) || '.jpg';
+                const fileName = `place_images/${uuidv4()}${fileExt}`;
+                const fileBuffer = fs.readFileSync(file.path);
+                
+                const { data, error } = await supabase.storage
+                    .from(bucketName)
+                    .upload(fileName, fileBuffer, {
+                        contentType: file.mimetype || 'image/jpeg',
+                        upsert: true
+                    });
+
+                if (error) {
+                    console.error("Supabase upload error:", error);
+                } else {
+                    const { data: urlData } = supabase.storage
+                        .from(bucketName)
+                        .getPublicUrl(fileName);
+                    uploadedImages.push(urlData.publicUrl);
+                }
+                
+                if (fs.existsSync(file.path)) {
+                    fs.unlinkSync(file.path);
+                }
+            }
+        }
+        const finalImages = [...parsedImages, ...uploadedImages];
+
         const place = await Place.create({
             name,
             description,
             category,
-            moods: moods || [],
-            personality: personality || [],
-            images: images || [],
+            moods: parsedMoods,
+            personality: parsedPersonality,
+            images: finalImages,
             address,
             latitude: finalLatitude,
             longitude: finalLongitude,
@@ -146,12 +194,56 @@ const updatePlace = async (req, res) => {
 
         const { name, description, category, moods, personality, images, address, latitude, longitude, googleMapsUrl } = req.body;
 
+        let parsedImages = place.images || [];
+        if (images !== undefined) {
+            if (images === '') {
+                parsedImages = [];
+            } else {
+                try { parsedImages = typeof images === 'string' ? JSON.parse(images) : images; } catch (e) { parsedImages = Array.isArray(images) ? images : [images]; }
+            }
+        }
+
+        let uploadedImages = [];
+        if (req.files && req.files.length > 0) {
+            const bucketName = process.env.SUPABASE_BUCKET || 'uploads';
+            for (const file of req.files) {
+                const fileExt = path.extname(file.originalname) || '.jpg';
+                const fileName = `place_images/${uuidv4()}${fileExt}`;
+                const fileBuffer = fs.readFileSync(file.path);
+                
+                const { data, error } = await supabase.storage
+                    .from(bucketName)
+                    .upload(fileName, fileBuffer, {
+                        contentType: file.mimetype || 'image/jpeg',
+                        upsert: true
+                    });
+
+                if (error) {
+                    console.error("Supabase upload error:", error);
+                } else {
+                    const { data: urlData } = supabase.storage
+                        .from(bucketName)
+                        .getPublicUrl(fileName);
+                    uploadedImages.push(urlData.publicUrl);
+                }
+                
+                if (fs.existsSync(file.path)) {
+                    fs.unlinkSync(file.path);
+                }
+            }
+        }
+        const finalImages = [...parsedImages, ...uploadedImages];
+
         if (name) place.name = name;
         if (description !== undefined) place.description = description;
         if (category) place.category = category;
-        if (moods) place.moods = moods;
-        if (personality) place.personality = personality;
-        if (images) place.images = images;
+        if (moods) {
+            try { place.moods = typeof moods === 'string' ? JSON.parse(moods) : moods; } catch (e) { place.moods = Array.isArray(moods) ? moods : [moods]; }
+        }
+        if (personality) {
+            try { place.personality = typeof personality === 'string' ? JSON.parse(personality) : personality; } catch (e) { place.personality = Array.isArray(personality) ? personality : [personality]; }
+        }
+        place.images = finalImages;
         if (address !== undefined) place.address = address;
 
         // ถ้าส่ง googleMapsUrl มา ให้ดึงพิกัดจากลิงก์
