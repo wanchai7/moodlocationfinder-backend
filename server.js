@@ -110,9 +110,9 @@ const startServer = async () => {
         await sequelize.sync({ alter: true });
         console.log('✅ Database synced successfully');
 
-        server.listen(PORT, () => {
+        server.listen(PORT, '0.0.0.0', () => {
             console.log(`🚀 Server running on port ${PORT}`);
-            console.log(`📡 API: http://localhost:${PORT}`);
+            console.log(`📡 API: bound to 0.0.0.0:${PORT}`);
             console.log(`💬 Socket.IO: WebSocket ready for chat`);
         });
     } catch (error) {
