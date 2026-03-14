@@ -51,16 +51,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ========== Routes (v1) ==========
-app.use('/api/v1/auth', authRoutes);          // UC1, UC2
-app.use('/api/v1/places', placeRoutes);       // UC3, UC4, UC6
-app.use('/api/v1/reviews', reviewRoutes);     // UC7
-app.use('/api/v1/favorites', favoriteRoutes); // UC8
-app.use('/api/v1/history', historyRoutes);    // UC9
-app.use('/api/v1/users', userRoutes);         // UC10
-app.use('/api/v1/admin', adminRoutes);        // UC12, UC13, UC14
-app.use('/api/v1/messages', chatRoutes);      // ระบบแชท 1-on-1 (ดัดแปลงจาก mern-chat)
-app.use('/api/v1/ai', aiSearchRoutes);        // AI endpoints
-
+app.use('/api/v1/auth', authRoutes);          
+app.use('/api/v1/places', placeRoutes);       
+app.use('/api/v1/reviews', reviewRoutes);     
+app.use('/api/v1/favorites', favoriteRoutes); 
+app.use('/api/v1/history', historyRoutes);    
+app.use('/api/v1/users', userRoutes);         
+app.use('/api/v1/admin', adminRoutes);        
+app.use('/api/v1/messages', chatRoutes);      
+app.use('/api/v1/ai', aiSearchRoutes);        
 // Health check
 app.get('/', (req, res) => {
     res.json({

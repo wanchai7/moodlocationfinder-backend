@@ -3,7 +3,7 @@ const { User } = require("../models");
 
 // สร้าง JWT Token
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "30d" });
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "30m" });
 };
 
 // ========== UC1: สมัครสมาชิก (สำหรับ Frontend) ==========
