@@ -25,7 +25,7 @@ const updateProfile = async (req, res) => {
             const bucketName = process.env.SUPABASE_BUCKET || 'uploads';
             const fileExt = path.extname(req.file.originalname) || '.jpg';
             const fileName = `profile_images/${uuidv4()}${fileExt}`;
-            const fileBuffer = fs.readFileSync(req.file.path);
+            const fileBuffer = req.file.buffer;
             
             // อัปโหลดไฟล์ไปยัง Supabase
             const { data, error } = await supabase.storage
@@ -59,12 +59,6 @@ const updateProfile = async (req, res) => {
                             const oldFilePath = pathParts.slice(bucketIndex + 1).join('/');
                             await supabase.storage.from(bucketName).remove([oldFilePath]);
                         }
-                    } else if (!user.profileImage.includes('cloudinary.com') && !user.profileImage.startsWith('http')) {
-                        // ถ้ายังเป็นรูปบน Local
-                        const oldPath = path.join(__dirname, '..', user.profileImage);
-                        if (fs.existsSync(oldPath)) {
-                            fs.unlinkSync(oldPath);
-                        }
                     }
                 } catch (err) {
                     console.error('Error deleting old image:', err);
@@ -72,11 +66,6 @@ const updateProfile = async (req, res) => {
             }
 
             user.profileImage = newImageUrl;
-
-            // ลบไฟล์ชั่วคราวใน Local (uploads/...)
-            if (fs.existsSync(req.file.path)) {
-                fs.unlinkSync(req.file.path);
-            }
         }
 
         await user.save();

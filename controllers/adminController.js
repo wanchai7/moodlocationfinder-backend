@@ -106,7 +106,7 @@ const createPlace = async (req, res) => {
             for (const file of req.files) {
                 const fileExt = path.extname(file.originalname) || '.jpg';
                 const fileName = `place_images/${uuidv4()}${fileExt}`;
-                const fileBuffer = fs.readFileSync(file.path);
+                const fileBuffer = file.buffer;
                 
                 const { data, error } = await supabase.storage
                     .from(bucketName)
@@ -122,10 +122,6 @@ const createPlace = async (req, res) => {
                         .from(bucketName)
                         .getPublicUrl(fileName);
                     uploadedImages.push(urlData.publicUrl);
-                }
-                
-                if (fs.existsSync(file.path)) {
-                    fs.unlinkSync(file.path);
                 }
             }
         }
@@ -209,7 +205,7 @@ const updatePlace = async (req, res) => {
             for (const file of req.files) {
                 const fileExt = path.extname(file.originalname) || '.jpg';
                 const fileName = `place_images/${uuidv4()}${fileExt}`;
-                const fileBuffer = fs.readFileSync(file.path);
+                const fileBuffer = file.buffer;
                 
                 const { data, error } = await supabase.storage
                     .from(bucketName)
@@ -225,10 +221,6 @@ const updatePlace = async (req, res) => {
                         .from(bucketName)
                         .getPublicUrl(fileName);
                     uploadedImages.push(urlData.publicUrl);
-                }
-                
-                if (fs.existsSync(file.path)) {
-                    fs.unlinkSync(file.path);
                 }
             }
         }
