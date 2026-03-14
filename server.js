@@ -27,7 +27,7 @@ const allowedOrigins = process.env.CORS_ORIGIN
 
 // การอนุญาติให้ Frontend เชื่อมต่อกับ Backend ด้วย port 5173
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: ["http://localhost:5173","https://moodlocationproject.vercel.app"],
   credentials: true
 }));
 
