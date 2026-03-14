@@ -23,13 +23,7 @@ const aiSearchRoutes = require('./routes/aiSearchRoutes');
 // CORS Configuration
 const allowedOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-    : ['http://localhost:5000'];
-
-// การอนุญาติให้ Frontend เชื่อมต่อกับ Backend ด้วย port 5173
-app.use(cors({
-  origin: ["http://localhost:5173","https://moodlocationproject.vercel.app"],
-  credentials: true
-}));
+    : ['http://localhost:5173', 'https://moodlocationproject.vercel.app'];
 
 app.use(cors({
     origin: function (origin, callback) {
@@ -38,6 +32,7 @@ app.use(cors({
         if (allowedOrigins.includes(origin)) {
             return callback(null, true);
         }
+        console.error('CORS Error: Origin not allowed:', origin);
         return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
