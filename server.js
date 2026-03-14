@@ -25,6 +25,14 @@ const allowedOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
     : ['http://localhost:5000'];
 
+// การอนุญาติให้ Frontend เชื่อมต่อกับ Backend ด้วย port 5173
+import cors from "cors";
+
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true
+}));
+
 app.use(cors({
     origin: function (origin, callback) {
         // อนุญาต requests ที่ไม่มี origin (เช่น Postman, mobile apps)
