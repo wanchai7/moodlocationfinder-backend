@@ -36,20 +36,18 @@ const getHistory = async (req, res) => {
 // POST /api/history
 const addHistory = async (req, res) => {
     try {
-        const { placeId } = req.body;
+        const { placeId, name, image } = req.body;
 
         if (!placeId) {
             return res.status(400).json({ message: 'กรุณาระบุสถานที่' });
         }
 
-        const place = await Place.findByPk(placeId);
-        if (!place) {
-            return res.status(404).json({ message: 'ไม่พบสถานที่' });
-        }
-
+        // บันทึกประวัติโดยใช้ placeId จาก Google ตรงๆ
         const history = await History.create({
             userId: req.user.id,
             placeId,
+            placeName: name,
+            placeImage: image,
             visitedAt: new Date()
         });
 

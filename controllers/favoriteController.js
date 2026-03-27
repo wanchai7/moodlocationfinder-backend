@@ -4,16 +4,10 @@ const { Favorite, Place, Review } = require('../models');
 // POST /api/favorites/toggle
 const toggleFavorite = async (req, res) => {
     try {
-        const { placeId } = req.body;
+        const { placeId, name, image } = req.body;
 
         if (!placeId) {
             return res.status(400).json({ message: 'กรุณาระบุสถานที่' });
-        }
-
-        // ตรวจสอบว่าสถานที่มีอยู่
-        const place = await Place.findByPk(placeId);
-        if (!place) {
-            return res.status(404).json({ message: 'ไม่พบสถานที่' });
         }
 
         // ตรวจสอบว่ามีในรายการโปรดแล้วหรือยัง
@@ -33,7 +27,9 @@ const toggleFavorite = async (req, res) => {
         // เพิ่มเข้ารายการโปรด
         await Favorite.create({
             userId: req.user.id,
-            placeId
+            placeId,
+            placeName: name,
+            placeImage: image
         });
 
         res.status(201).json({

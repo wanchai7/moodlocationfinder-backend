@@ -16,12 +16,14 @@ const Favorite = sequelize.define('Favorite', {
         }
     },
     placeId: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: 'places',
-            key: 'id'
-        }
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    placeName: {
+        type: DataTypes.STRING
+    },
+    placeImage: {
+        type: DataTypes.TEXT
     }
 }, {
     tableName: 'favorites',
