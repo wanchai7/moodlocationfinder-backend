@@ -15,16 +15,16 @@ const Favorite = sequelize.define('Favorite', {
             key: 'id'
         }
     },
-    placeId: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    placeName: {
-        type: DataTypes.STRING
-    },
-    placeImage: {
-        type: DataTypes.TEXT
-    }
+    placeId: { 
+        type: DataTypes.STRING, 
+        allowNull: false 
+    }, // 🌟 เปลี่ยนเป็น STRING
+    placeName: { 
+        type: DataTypes.STRING 
+    }, // 🌟 เก็บชื่อร้านไว้โชว์หน้า List
+    placeImage: { 
+        type: DataTypes.TEXT 
+    }   // 🌟 เก็บ Reference รูปไว้โชว์หน้า List
 }, {
     tableName: 'favorites',
     timestamps: true,

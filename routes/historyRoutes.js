@@ -1,16 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const { getHistory, addHistory, deleteHistory } = require('../controllers/historyController');
+const { getHistories, createHistory, deleteHistory } = require('../controllers/historyController');
 const { protect } = require('../middleware/authMiddleware');
 
 // ทุก route ต้อง login
 router.use(protect);
 
 // UC9: ดูประวัติการเดินทาง
-router.get('/', getHistory);
+router.get('/', getHistories);
 
 // บันทึกประวัติ (เช็คอิน)
-router.post('/', addHistory);
+router.post('/', createHistory);
 
 // ลบประวัติ
 router.delete('/:id', deleteHistory);

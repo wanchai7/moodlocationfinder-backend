@@ -1,45 +1,28 @@
-const { Favorite, Place, Review } = require('../models');
+const { Favorite } = require('../models');
 
-// ========== UC8: บันทึกรายการโปรด (Toggle) ==========
-// POST /api/favorites/toggle
+// 🌟 กดใจ / เลิกกดใจ
 const toggleFavorite = async (req, res) => {
-    try {
-        const { placeId, name, image } = req.body;
+  try {
+    const { placeId, name, image } = req.body;
+    const userId = req.user.id;
 
-        if (!placeId) {
-            return res.status(400).json({ message: 'กรุณาระบุสถานที่' });
-        }
+    const favorite = await Favorite.findOne({ where: { userId, placeId } });
 
-        // ตรวจสอบว่ามีในรายการโปรดแล้วหรือยัง
-        const existing = await Favorite.findOne({
-            where: { userId: req.user.id, placeId }
-        });
-
-        if (existing) {
-            // ลบออกจากรายการโปรด
-            await existing.destroy();
-            return res.json({
-                message: 'นำออกจากรายการโปรดแล้ว',
-                isFavorite: false
-            });
-        }
-
-        // เพิ่มเข้ารายการโปรด
-        await Favorite.create({
-            userId: req.user.id,
-            placeId,
-            placeName: name,
-            placeImage: image
-        });
-
-        res.status(201).json({
-            message: 'บันทึกในรายการโปรดเรียบร้อยแล้ว',
-            isFavorite: true
-        });
-    } catch (error) {
-        console.error('ToggleFavorite error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในระบบ' });
+    if (favorite) {
+      await favorite.destroy();
+      return res.status(200).json({ isFavorite: false, message: "Removed" });
+    } else {
+      await Favorite.create({ 
+        userId, 
+        placeId, 
+        placeName: name, 
+        placeImage: image 
+      });
+      return res.status(201).json({ isFavorite: true, message: "Added" });
     }
+  } catch (error) {
+    res.status(500).json({ message: "Error toggling favorite" });
+  }
 };
 
 // ========== ดึงรายการโปรดของผู้ใช้ ==========
@@ -48,34 +31,12 @@ const getFavorites = async (req, res) => {
     try {
         const favorites = await Favorite.findAll({
             where: { userId: req.user.id },
-            include: [{
-                model: Place,
-                as: 'place',
-                include: [{
-                    model: Review,
-                    as: 'reviews',
-                    attributes: ['rating']
-                }]
-            }],
             order: [['createdAt', 'DESC']]
         });
 
-        const favoritesWithRating = favorites.map(fav => {
-            const favData = fav.toJSON();
-            if (favData.place && favData.place.reviews) {
-                const ratings = favData.place.reviews.map(r => r.rating);
-                favData.place.averageRating = ratings.length > 0
-                    ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)
-                    : 0;
-                favData.place.reviewCount = ratings.length;
-                delete favData.place.reviews;
-            }
-            return favData;
-        });
-
         res.json({
-            count: favoritesWithRating.length,
-            favorites: favoritesWithRating
+            count: favorites.length,
+            favorites
         });
     } catch (error) {
         console.error('GetFavorites error:', error);
@@ -83,19 +44,17 @@ const getFavorites = async (req, res) => {
     }
 };
 
-// ========== ตรวจสอบว่าเป็นรายการโปรดหรือไม่ ==========
-// GET /api/favorites/check/:placeId
+// 🌟 เช็คสถานะหัวใจ (ใช้ตอนโหลดหน้า Detail)
 const checkFavorite = async (req, res) => {
-    try {
-        const favorite = await Favorite.findOne({
-            where: { userId: req.user.id, placeId: req.params.placeId }
-        });
+  try {
+    const { placeId } = req.params;
+    const userId = req.user.id;
 
-        res.json({ isFavorite: !!favorite });
-    } catch (error) {
-        console.error('CheckFavorite error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในระบบ' });
-    }
+    const favorite = await Favorite.findOne({ where: { userId, placeId } });
+    res.status(200).json({ isFavorite: !!favorite });
+  } catch (error) {
+    res.status(500).json({ message: "Error checking favorite" });
+  }
 };
 
 module.exports = { toggleFavorite, getFavorites, checkFavorite };

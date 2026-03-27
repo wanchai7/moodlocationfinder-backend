@@ -15,19 +15,19 @@ const History = sequelize.define('History', {
             key: 'id'
         }
     },
-    placeId: {
-        type: DataTypes.STRING,
-        allowNull: false
+    placeId: { 
+        type: DataTypes.STRING, 
+        allowNull: false 
+    }, // 🌟 เปลี่ยนเป็น STRING
+    placeName: { 
+        type: DataTypes.STRING 
     },
-    placeName: {
-        type: DataTypes.STRING
+    placeImage: { 
+        type: DataTypes.TEXT 
     },
-    placeImage: {
-        type: DataTypes.TEXT
-    },
-    visitedAt: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
+    visitedAt: { 
+        type: DataTypes.DATE, 
+        defaultValue: DataTypes.NOW 
     }
 }, {
     tableName: 'histories',

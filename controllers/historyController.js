@@ -1,64 +1,37 @@
-const { History, Place } = require('../models');
+const { History } = require('../models');
 
-// ========== UC9: ดูประวัติการเดินทาง ==========
-// GET /api/history
-const getHistory = async (req, res) => {
-    try {
-        const histories = await History.findAll({
-            where: { userId: req.user.id },
-            include: [{
-                model: Place,
-                as: 'place',
-                attributes: ['id', 'name', 'category', 'images', 'address']
-            }],
-            order: [['visitedAt', 'DESC']]
-        });
+// 🌟 บันทึกประวัติการนำทาง
+const createHistory = async (req, res) => {
+  try {
+    const { placeId, name, image } = req.body;
+    const userId = req.user.id;
 
-        if (histories.length === 0) {
-            return res.json({
-                message: 'คุณยังไม่มีประวัติการเดินทาง เริ่มออกไปค้นหาสถานที่ตามอารมณ์ของคุณเลย!',
-                count: 0,
-                histories: []
-            });
-        }
+    // บันทึกประวัติใหม่ลงไปเลย (เก็บซ้ำได้เพราะเป็นประวัติการไป)
+    const history = await History.create({
+      userId,
+      placeId,
+      placeName: name,
+      placeImage: image,
+      visitedAt: new Date()
+    });
 
-        res.json({
-            count: histories.length,
-            histories
-        });
-    } catch (error) {
-        console.error('GetHistory error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในระบบ' });
-    }
+    res.status(201).json({ message: "History saved", history });
+  } catch (error) {
+    res.status(500).json({ message: "Error saving history" });
+  }
 };
 
-// ========== บันทึกประวัติการเดินทาง (เช็คอิน) ==========
-// POST /api/history
-const addHistory = async (req, res) => {
-    try {
-        const { placeId, name, image } = req.body;
-
-        if (!placeId) {
-            return res.status(400).json({ message: 'กรุณาระบุสถานที่' });
-        }
-
-        // บันทึกประวัติโดยใช้ placeId จาก Google ตรงๆ
-        const history = await History.create({
-            userId: req.user.id,
-            placeId,
-            placeName: name,
-            placeImage: image,
-            visitedAt: new Date()
-        });
-
-        res.status(201).json({
-            message: 'บันทึกประวัติการเดินทางเรียบร้อยแล้ว',
-            history
-        });
-    } catch (error) {
-        console.error('AddHistory error:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในระบบ' });
-    }
+// 🌟 ดึงประวัติมาโชว์
+const getHistories = async (req, res) => {
+  try {
+    const histories = await History.findAll({
+      where: { userId: req.user.id },
+      order: [['visitedAt', 'DESC']] // เอาอันล่าสุดขึ้นก่อน
+    });
+    res.status(200).json({ histories });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching history" });
+  }
 };
 
 // ========== ลบประวัติ ==========
@@ -81,4 +54,4 @@ const deleteHistory = async (req, res) => {
     }
 };
 
-module.exports = { getHistory, addHistory, deleteHistory };
+module.exports = { createHistory, getHistories, deleteHistory };
