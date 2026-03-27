@@ -19,6 +19,7 @@ const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const aiSearchRoutes = require('./routes/aiSearchRoutes');
+const mapsRoutes = require('./routes/mapsRoutes');
 
 // CORS Configuration
 const allowedOrigins = process.env.CORS_ORIGIN
@@ -55,6 +56,7 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/admin', adminRoutes);        
 app.use('/api/v1/messages', chatRoutes);      
 app.use('/api/v1/ai', aiSearchRoutes);        
+app.use('/api/v1/maps', mapsRoutes);
 // Health check
 app.get('/', (req, res) => {
     res.json({

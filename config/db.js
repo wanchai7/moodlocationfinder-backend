@@ -48,7 +48,7 @@ const connectDB = async () => {
         await sequelize.authenticate();
         console.log('✅ PostgreSQL connected successfully');
     } catch (error) {
-        console.error('❌ Unable to connect to PostgreSQL:', error.message);
+        console.error('❌ Unable to connect to PostgreSQL:', error);
         process.exit(1);
     }
 };
