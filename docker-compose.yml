@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: moodlocationfinder-db
     restart: unless-stopped
     ports:
@@ -52,7 +52,7 @@ services:
       - "5050:80"
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_PASSWORD: admin 
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     networks:
       - mood_network

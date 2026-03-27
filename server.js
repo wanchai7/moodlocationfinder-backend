@@ -58,19 +58,19 @@ app.use('/api/v1/ai', aiSearchRoutes);
 // Health check
 app.get('/', (req, res) => {
     res.json({
-        message: '🎭 Mood & Place API is running!',
-        version: '1.0.0',
-        endpoints: {
-            auth: '/api/v1/auth',
-            places: '/api/v1/places',
-            reviews: '/api/v1/reviews',
-            favorites: '/api/v1/favorites',
-            history: '/api/v1/history',
-            users: '/api/v1/users',
-            admin: '/api/v1/admin',
-            messages: '/api/v1/messages (WebSocket: Socket.IO)',
-            ai: '/api/v1/ai'
-        }
+        message: '🎭 เซิฟเวอณ์ของหลังบ้านทำงานแล้ว!',
+        // version: '1.0.0',
+        // endpoints: {
+        //     auth: '/api/v1/auth',
+        //     places: '/api/v1/places',
+        //     reviews: '/api/v1/reviews',
+        //     favorites: '/api/v1/favorites',
+        //     history: '/api/v1/history',
+        //     users: '/api/v1/users',
+        //     admin: '/api/v1/admin',
+        //     messages: '/api/v1/messages (WebSocket: Socket.IO)',
+        //     ai: '/api/v1/ai'
+        // }
     });
 });
 
