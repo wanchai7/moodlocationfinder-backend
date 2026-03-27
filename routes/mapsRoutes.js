@@ -5,4 +5,7 @@ const mapsController = require('../controllers/mapsController'); // ชี้ไ
 // เมื่อหน้าเว็บเรียกมาที่ /api/v1/maps/search ให้ทำฟังก์ชัน searchNearbyPlaces
 router.get('/search', mapsController.searchNearbyPlaces);
 
+// 🌟 เพิ่มบรรทัดนี้: เมื่อมีคนขอรายละเอียดร้านด้วย place_id
+router.get('/details/:place_id', mapsController.getPlaceDetails);
+
 module.exports = router;

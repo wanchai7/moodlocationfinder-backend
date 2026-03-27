@@ -24,3 +24,36 @@ exports.searchNearbyPlaces = async (req, res) => {
     res.status(500).json({ message: "ไม่สามารถเชื่อมต่อ Google Maps ได้" });
   }
 };
+
+// เพิ่มฟังก์ชันนี้ต่อท้ายไฟล์ controllers/mapsController.js
+exports.getPlaceDetails = async (req, res) => {
+  const { place_id } = req.params;
+  
+  try {
+    const response = await client.placeDetails({
+      params: {
+        place_id: place_id,
+        language: 'th',
+        // เลือกดึงเฉพาะข้อมูลที่จำเป็นเพื่อประหยัดเงิน (รีวิว, รูปภาพ, เบอร์โทร, เวลาเปิดปิด)
+        fields: ['name', 'formatted_address', 'formatted_phone_number', 'opening_hours', 'rating', 'user_ratings_total', 'reviews', 'photos', 'url'],
+        key: process.env.GOOGLE_MAPS_API_KEY,
+      },
+      timeout: 3000,
+    });
+
+    const placeDetails = response.data.result;
+
+    // แนบ URL สำหรับดึงรูปภาพไปด้วย เพื่อให้ Frontend นำไปแสดงผลได้ทันที
+    if (placeDetails && placeDetails.photos) {
+      placeDetails.photos = placeDetails.photos.map(photo => ({
+        ...photo,
+        photo_url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photo.photo_reference}&key=${process.env.GOOGLE_MAPS_API_KEY}`
+      }));
+    }
+
+    res.status(200).json(placeDetails);
+  } catch (error) {
+    console.error("Place Details Error:", error);
+    res.status(500).json({ message: "ไม่สามารถดึงข้อมูลรายละเอียดได้" });
+  }
+};
