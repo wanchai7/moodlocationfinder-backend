@@ -117,6 +117,10 @@ const login = async (req, res) => {
     }
 
     const token = generateToken(user.id);
+    
+    // อัปเดต sessionToken เพื่อเตะผู้ใช้เดิมออกเมื่อล็อกอินใหม่ (Single Session)
+    user.sessionToken = token;
+    await user.save();
 
     res.json({
       message: "ยินดีต้อนรับกลับมา",
@@ -224,4 +228,20 @@ const registerAdmin = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getMe, registerAdmin };
+// ========== ออกจากระบบ ==========
+// POST /api/auth/logout
+const logout = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (user) {
+      user.sessionToken = null; // เคลียร์ sessionToken
+      await user.save();
+    }
+    res.json({ message: "ออกจากระบบสำเร็จ" });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการออกจากระบบ" });
+  }
+};
+
+module.exports = { register, login, getMe, registerAdmin, logout };

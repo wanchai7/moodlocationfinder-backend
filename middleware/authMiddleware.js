@@ -19,6 +19,11 @@ const protect = async (req, res, next) => {
                 return res.status(403).json({ message: 'บัญชีของคุณถูกระงับการใช้งาน' });
             }
 
+            // ตรวจสอบว่าเป็น Token ล่าสุดหรือไม่ (Single Session)
+            if (user.sessionToken && user.sessionToken !== token) {
+                return res.status(401).json({ message: 'บัญชีนี้มีการเข้าสู่ระบบจากอุปกรณ์อื่น กรุณาเข้าสู่ระบบใหม่' });
+            }
+
             req.user = user;
             next();
         } catch (error) {

@@ -65,6 +65,10 @@ const User = sequelize.define('User', {
     bannedUntil: {
         type: DataTypes.DATE,
         allowNull: true
+    },
+    sessionToken: {
+        type: DataTypes.TEXT,
+        allowNull: true
     }
 }, {
     tableName: 'users',
