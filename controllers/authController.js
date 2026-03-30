@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const { User } = require("../models");
+const { io, getReceiverSocketId } = require("../lib/socket");
 
 // สร้าง JWT Token
 const generateToken = (id) => {
@@ -121,6 +122,14 @@ const login = async (req, res) => {
     // อัปเดต sessionToken เพื่อเตะผู้ใช้เดิมออกเมื่อล็อกอินใหม่ (Single Session)
     user.sessionToken = token;
     await user.save();
+
+    // เตะเครื่องเก่าผ่าน Socket.IO แบบ Real-time ทันที
+    const oldSocketId = getReceiverSocketId(String(user.id)) || getReceiverSocketId(user.id);
+    if (oldSocketId) {
+      io.to(oldSocketId).emit("force_logout", {
+        message: "บัญชีนี้มีการเข้าสู่ระบบจากอุปกรณ์อื่น ระบบจะบังคับออกจากระบบ",
+      });
+    }
 
     res.json({
       message: "ยินดีต้อนรับกลับมา",
