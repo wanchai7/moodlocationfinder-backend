@@ -109,7 +109,7 @@ const startServer = async () => {
         await connectDB();
 
         // Sync database (สร้าง tables อัตโนมัติ)
-        await sequelize.sync({ force: true });
+        await sequelize.sync({ alter: true });
         console.log('✅ Database synced successfully');
 
         server.listen(PORT, '0.0.0.0', () => {
