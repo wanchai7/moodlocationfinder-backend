@@ -35,7 +35,7 @@ exports.getPlaceDetails = async (req, res) => {
         place_id: place_id,
         language: 'th',
         // เลือกดึงเฉพาะข้อมูลที่จำเป็นเพื่อประหยัดเงิน (รีวิว, รูปภาพ, เบอร์โทร, เวลาเปิดปิด)
-        fields: ['name', 'formatted_address', 'formatted_phone_number', 'opening_hours', 'rating', 'user_ratings_total', 'reviews', 'photos', 'url'],
+        fields: ['name', 'formatted_address', 'formatted_phone_number', 'opening_hours', 'rating', 'user_ratings_total', 'reviews', 'photos', 'url', 'geometry'],
         key: process.env.GOOGLE_MAPS_API_KEY,
       },
       timeout: 3000,
