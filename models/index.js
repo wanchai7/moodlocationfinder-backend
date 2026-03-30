@@ -20,17 +20,17 @@ Review.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
 User.hasMany(Favorite, { foreignKey: 'userId', as: 'favorites' });
 Favorite.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
-// Place -> Favorites
-Place.hasMany(Favorite, { foreignKey: 'placeId', as: 'favorites' });
-Favorite.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
+// ❌ ลบส่วนนี้ทิ้ง (Place -> Favorites)
+// Place.hasMany(Favorite, { foreignKey: 'placeId', as: 'favorites' });
+// Favorite.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
 
 // User -> History
 User.hasMany(History, { foreignKey: 'userId', as: 'histories' });
 History.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
-// Place -> History
-Place.hasMany(History, { foreignKey: 'placeId', as: 'histories' });
-History.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
+// ❌ ลบส่วนนี้ทิ้ง (Place -> History)
+// Place.hasMany(History, { foreignKey: 'placeId', as: 'histories' });
+// History.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
 
 // ========== Chat Associations ==========
 
