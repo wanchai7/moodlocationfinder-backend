@@ -1,6 +1,18 @@
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+const crypto = require("crypto");
+const { Op } = require("sequelize");
 const { User } = require("../models");
 const { io, getReceiverSocketId } = require("../lib/socket");
+
+// ตั้งค่า Nodemailer (ดึงข้อมูลจาก .env)
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 // สร้าง JWT Token
 const generateToken = (id) => {
@@ -26,35 +38,69 @@ const register = async (req, res) => {
         .json({ message: "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร" });
     }
 
+    // สร้าง Token สำหรับการยืนยันอีเมลด้วย crypto
+    const verificationToken = crypto.randomBytes(20).toString('hex');
+    const verificationTokenExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 นาที
+
     // ตรวจสอบอีเมลซ้ำ
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({
-        message: "อีเมลนี้ถูกใช้งานแล้ว",
-        suggestion: "หากลืมรหัสผ่าน กรุณาไปที่หน้า Forgot Password",
+      if (existingUser.isVerified) {
+        return res.status(400).json({
+          message: "อีเมลนี้ถูกใช้งานแล้ว",
+          suggestion: "หากลืมรหัสผ่าน กรุณาไปที่หน้า Forgot Password",
+        });
+      } else {
+        // อัปเดตข้อมูลผู้ใช้เดิมที่ยังไม่ verify
+        existingUser.firstName = firstName;
+        existingUser.lastName = lastName;
+        existingUser.password = password;
+        existingUser.gender = gender;
+        existingUser.verificationToken = verificationToken;
+        existingUser.verificationTokenExpires = verificationTokenExpires;
+        await existingUser.save();
+      }
+    } else {
+      // สร้างผู้ใช้ใหม่ลง Database โดยที่ยังไม่ verify
+      await User.create({
+        firstName,
+        lastName,
+        email,
+        password,
+        gender,
+        role: "user",
+        isVerified: false,
+        verificationToken,
+        verificationTokenExpires
       });
     }
 
-    // สร้างผู้ใช้ใหม่ (role = 'user' เสมอ สำหรับการสมัครผ่าน frontend)
-    const user = await User.create({
-      firstName,
-      lastName,
-      email,
-      password,
-      gender,
-      role: "user",
-    });
+    // สร้างลิงก์ยืนยัน
+    const frontendUrl = process.env.CORS_ORIGIN || "http://localhost:5173";
+    const verificationLink = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
-    res.status(201).json({
-      message: "สมัครสมาชิกสำเร็จ",
-      user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        gender: user.gender,
-        role: user.role,
-      },
+    // เตรียมส่งอีเมล
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "ยืนยันเพื่อเข้าใช้งานระบบ MoodLocationFinder",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">ยินดีต้อนรับสู่ MoodLocationFinder</h2>
+          <p>ขอบคุณสำหรับการสมัครสมาชิก กรุณาคลิกที่ปุ่มด้านล่างเพื่อยืนยันอีเมลและสร้างบัญชีของคุณ:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationLink}" style="padding: 12px 24px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">ยืนยันเพื่อเข้าใช้งานระบบ moodlocation</a>
+          </div>
+          <p style="color: #666; font-size: 14px;">(ลิงก์นี้จะหมดอายุภายใน 15 นาที)</p>
+          <p style="color: #888; font-size: 12px; margin-top: 30px;">หากคุณไม่ได้ทำการสมัครสมาชิก กรุณาละเว้นอีเมลฉบับนี้</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({
+      message: "ระบบได้ส่งลิงก์ยืนยันไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบอีเมลของคุณ",
     });
   } catch (error) {
     // Sequelize validation errors
@@ -90,6 +136,11 @@ const login = async (req, res) => {
 
     if (!user) {
       return res.status(401).json({ message: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" });
+    }
+
+    // ตรวจสอบการยืนยันอีเมล
+    if (user.isVerified === false) {
+      return res.status(403).json({ message: "กรุณายืนยันอีเมลของคุณก่อนเข้าสู่ระบบ หากไม่พบอีเมลกรุณาสมัครใหม่อีกครั้ง" });
     }
 
     // ตรวจสอบสถานะ
@@ -206,6 +257,7 @@ const registerAdmin = async (req, res) => {
       gender,
       role: "admin",
       status: "active",
+      isVerified: true,
     });
 
     res.status(201).json({
@@ -253,4 +305,46 @@ const logout = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getMe, registerAdmin, logout };
+// ========== ยืนยันอีเมลเพื่อสร้างบัญชี ==========
+// GET /api/auth/verify-email/:token หรือ POST /api/auth/verify-email
+const verifyEmail = async (req, res) => {
+  try {
+    const token = req.params.token || req.body.token;
+    if (!token) {
+      return res.status(400).json({ message: "ไม่พบ Token ยืนยันตัวตน" });
+    }
+
+    const user = await User.findOne({ 
+      where: { 
+        verificationToken: token,
+        verificationTokenExpires: { [Op.gt]: new Date() } 
+      } 
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Token ไม่ถูกต้องหรือหมดอายุแล้ว กรุณาสมัครสมาชิกใหม่อีกครั้ง" });
+    }
+
+    user.isVerified = true;
+    user.verificationToken = null;
+    user.verificationTokenExpires = null;
+    await user.save();
+
+    res.status(200).json({
+      message: "ยืนยันอีเมลสำเร็จแล้ว! คุณสามารถเข้าสู่ระบบได้",
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        gender: user.gender,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Verify email error:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการยืนยันอีเมล" });
+  }
+};
+
+module.exports = { register, login, getMe, registerAdmin, logout, verifyEmail };

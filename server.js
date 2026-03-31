@@ -108,6 +108,14 @@ const startServer = async () => {
     try {
         await connectDB();
 
+        // แก้ปัญหา Foreign Key: ลบ constraint เดิมของ favorites และ histories ทิ้งก่อน
+        try {
+            await sequelize.query('ALTER TABLE "favorites" DROP CONSTRAINT IF EXISTS "favorites_placeId_fkey" CASCADE;');
+            await sequelize.query('ALTER TABLE "histories" DROP CONSTRAINT IF EXISTS "histories_placeId_fkey" CASCADE;');
+        } catch (e) {
+            console.log("Constraint might not exist or already dropped");
+        }
+
         // Sync database (สร้าง tables อัตโนมัติ)
         await sequelize.sync({ alter: true });
         console.log('✅ Database synced successfully');
