@@ -23,8 +23,9 @@ const updateProfile = async (req, res) => {
         // อัปเดตรูปโปรไฟล์
         if (req.file) {
             const bucketName = process.env.SUPABASE_BUCKET || 'uploads';
-            const fileExt = path.extname(req.file.originalname) || '.jpg';
-            const fileName = `profile_images/${uuidv4()}${fileExt}`;
+            // ใช้ชื่อไฟล์ที่แนบมา (แนบ timestamp เพื่อป้องกันชื่อไฟล์ซ้ำกัน)
+            const originalName = req.file.originalname.replace(/\s+/g, '_');
+            const fileName = `profile_images/${Date.now()}_${originalName}`;
             const fileBuffer = req.file.buffer;
             
             // อัปโหลดไฟล์ไปยัง Supabase

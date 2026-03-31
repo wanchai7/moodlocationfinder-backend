@@ -104,8 +104,9 @@ const createPlace = async (req, res) => {
         if (req.files && req.files.length > 0) {
             const bucketName = process.env.SUPABASE_BUCKET || 'uploads';
             for (const file of req.files) {
-                const fileExt = path.extname(file.originalname) || '.jpg';
-                const fileName = `place_images/${uuidv4()}${fileExt}`;
+                // ใช้ชื่อไฟล์ที่แนบมา (แนบ timestamp เพื่อป้องกันชื่อไฟล์ซ้ำกัน)
+                const originalName = file.originalname.replace(/\s+/g, '_');
+                const fileName = `place_images/${Date.now()}_${originalName}`;
                 const fileBuffer = file.buffer;
                 
                 const { data, error } = await supabase.storage
@@ -203,8 +204,9 @@ const updatePlace = async (req, res) => {
         if (req.files && req.files.length > 0) {
             const bucketName = process.env.SUPABASE_BUCKET || 'uploads';
             for (const file of req.files) {
-                const fileExt = path.extname(file.originalname) || '.jpg';
-                const fileName = `place_images/${uuidv4()}${fileExt}`;
+                // ใช้ชื่อไฟล์ที่แนบมา (แนบ timestamp เพื่อป้องกันชื่อไฟล์ซ้ำกัน)
+                const originalName = file.originalname.replace(/\s+/g, '_');
+                const fileName = `place_images/${Date.now()}_${originalName}`;
                 const fileBuffer = file.buffer;
                 
                 const { data, error } = await supabase.storage
