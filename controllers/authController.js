@@ -54,8 +54,10 @@ const register = async (req, res) => {
       { expiresIn: "15m" }
     );
 
-    // สร้างลิงก์ยืนยัน เพื่อให้เวลาคนคลิกจากเมล แล้วลิงก์เด้งมาหา Frontend ก่อน หรือส่งมาหลังบ้าน
-    const frontendUrl = process.env.CORS_ORIGIN || "http://localhost:5173";
+    // ตรวจสอบว่าใครยิง Request มา (Localhost หรือ Vercel) เพื่อให้ลิงก์อีเมลเด้งกลับไปที่เดิม
+    // หากไม่พบ ให้เอาตัวแรกสุดของ CORS_ORIGIN มาใช้แทน
+    const fallbackOrigin = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',')[0].trim() : "http://localhost:5173";
+    const frontendUrl = req.headers.origin || fallbackOrigin;
     const verificationLink = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
     // เตรียมส่งอีเมล
