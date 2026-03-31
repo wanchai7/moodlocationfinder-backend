@@ -55,10 +55,17 @@ const register = async (req, res) => {
     );
 
     // ตรวจสอบว่าใครยิง Request มา (Localhost หรือ Vercel) เพื่อให้ลิงก์อีเมลเด้งกลับไปที่เดิม
-    // หากไม่พบ ให้เอาตัวแรกสุดของ CORS_ORIGIN มาใช้แทน
-    const fallbackOrigin = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',')[0].trim() : "http://localhost:5173";
-    const frontendUrl = req.headers.origin || fallbackOrigin;
-    const verificationLink = `${frontendUrl}/verify-email?token=${verificationToken}`;
+    let verificationLink = "";
+    if (!req.headers.origin) {
+      // หากทดสอบผ่าน Postman (ไม่มี origin) ให้ส่งลิงก์กลับมาที่ Backend port 5000 เพื่อเปิดหน้าเว็บ
+      const port = process.env.PORT || 5000;
+      verificationLink = `http://localhost:${port}/api/v1/auth/verify-email/${verificationToken}`;
+    } else {
+      // หากมาจาก Frontend ก็ให้ส่งลิงก์ไปที่ Frontend ตามปกติ
+      const fallbackOrigin = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',')[0].trim() : "http://localhost:5173";
+      const frontendUrl = req.headers.origin || fallbackOrigin;
+      verificationLink = `${frontendUrl}/verify-email?token=${verificationToken}`;
+    }
 
     // เตรียมส่งอีเมล
     const mailOptions = {
@@ -287,8 +294,15 @@ const logout = async (req, res) => {
 // GET /api/auth/verify-email/:token หรือ POST /api/auth/verify-email
 const verifyEmail = async (req, res) => {
   try {
-    const token = req.params.token || req.body.token;
+    const token = req.params.token || req.body.token || req.query.token;
     if (!token) {
+      if (req.method === 'GET') {
+        return res.status(400).send(`
+          <div style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
+            <h1 style="color: #f44336;">❌ ไม่พบ Token ยืนยันตัวตน</h1>
+          </div>
+        `);
+      }
       return res.status(400).json({ message: "ไม่พบ Token ยืนยันตัวตน" });
     }
 
@@ -299,6 +313,14 @@ const verifyEmail = async (req, res) => {
     // ตรวจสอบอีกครั้งว่าอีเมลถูกใช้งานไปแล้วหรือยัง (เผื่อกรณีกดยืนยันเบิ้ล)
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
+      if (req.method === 'GET') {
+        return res.status(400).send(`
+          <div style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
+            <h1 style="color: #ff9800;">⚠️ อีเมลนี้ถูกใช้งานไปแล้ว</h1>
+            <p>คุณสามารถปิดหน้านี้และไปเข้าสู่ระบบในแอปพลิเคชันได้ทันที</p>
+          </div>
+        `);
+      }
       return res.status(400).json({ message: "อีเมลนี้ถูกใช้งานไปแล้ว" });
     }
 
@@ -311,6 +333,16 @@ const verifyEmail = async (req, res) => {
       gender,
       role: "user",
     });
+
+    if (req.method === 'GET') {
+      return res.status(201).send(`
+        <div style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background-color: #f9f9f9; padding: 40px; border-radius: 10px; max-width: 500px; margin-left: auto; margin-right: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+          <h1 style="color: #4CAF50; font-size: 32px; margin-bottom: 20px;">✅ ยืนยันอีเมลสำเร็จ!</h1>
+          <p style="font-size: 18px; color: #333; line-height: 1.6;">บัญชีของคุณถูกสร้างและบันทึกลงฐานข้อมูลเรียบร้อยแล้ว</p>
+          <p style="font-size: 16px; color: #666; margin-top: 20px;">ตอนนี้คุณสามารถปิดหน้านี้และกลับไปเข้าสู่ระบบผ่านแอปพลิเคชันได้ทันที</p>
+        </div>
+      `);
+    }
 
     res.status(201).json({
       message: "ยืนยันอีเมลและสร้างบัญชีสำเร็จ สามารถเข้าสู่ระบบได้ทันที",
@@ -325,9 +357,25 @@ const verifyEmail = async (req, res) => {
     });
   } catch (error) {
     if (error.name === "TokenExpiredError") {
+      if (req.method === 'GET') {
+        return res.status(400).send(`
+          <div style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
+            <h1 style="color: #f44336;">⏳ ลิงก์ยืนยันหมดอายุแล้ว</h1>
+            <p>กรุณากลับไปสมัครสมาชิกใหม่อีกครั้ง</p>
+          </div>
+        `);
+      }
       return res.status(400).json({ message: "ลิงก์ยืนยันหมดอายุแล้ว กรุณาสมัครใหม่อีกครั้ง" });
     }
     console.error("Verify email error:", error);
+    if (req.method === 'GET') {
+      return res.status(500).send(`
+        <div style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
+          <h1 style="color: #f44336;">❌ เกิดข้อผิดพลาดในระบบ</h1>
+          <p>ลิงก์ยืนยันไม่ถูกต้องหรือระบบมีปัญหา กรุณาลองใหม่อีกครั้ง</p>
+        </div>
+      `);
+    }
     res.status(500).json({ message: "เกิดข้อผิดพลาด หรือลิงก์ยืนยันไม่ถูกต้อง" });
   }
 };

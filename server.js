@@ -121,7 +121,7 @@ const startServer = async () => {
         console.log('✅ Database synced successfully');
 
         server.listen(PORT, '0.0.0.0', () => {
-            console.log(`🚀 Server running on port ${PORT}`);
+            console.log(`🚀 http://localhost:${PORT}`);
             console.log(`📡 API: bound to 0.0.0.0:${PORT}`);
             console.log(`💬 Socket.IO: WebSocket ready for chat`);
         });
