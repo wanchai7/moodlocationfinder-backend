@@ -29,9 +29,11 @@ const User = sequelize.define('User', {
             msg: 'อีเมลนี้ถูกใช้งานแล้ว'
         },
         validate: {
-            validateEmailDomain(value) {
-                if (!/^[^@]+@(gmail|hotmail)\.[a-z]{2,}$/i.test(value)) {
-                    throw new Error('อีเมลต้องใช้ gmail.com หรือ hotmail.com เท่านั้น');
+            isEmail: { msg: 'รูปแบบอีเมลไม่ถูกต้อง' },
+            validateEmailFormat(value) {
+                // เช็คว่ามีข้อความ @ ข้อความ . ข้อความ ตามที่ต้องการ
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                    throw new Error('รูปแบบอีเมลไม่ถูกต้อง ต้องมี @ และ . (เช่น user@example.com)');
                 }
             }
         }
