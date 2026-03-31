@@ -38,44 +38,23 @@ const register = async (req, res) => {
         .json({ message: "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร" });
     }
 
-    // สร้าง Token สำหรับการยืนยันอีเมลด้วย crypto
-    const verificationToken = crypto.randomBytes(20).toString('hex');
-    const verificationTokenExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 นาที
-
     // ตรวจสอบอีเมลซ้ำ
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      if (existingUser.isVerified) {
-        return res.status(400).json({
-          message: "อีเมลนี้ถูกใช้งานแล้ว",
-          suggestion: "หากลืมรหัสผ่าน กรุณาไปที่หน้า Forgot Password",
-        });
-      } else {
-        // อัปเดตข้อมูลผู้ใช้เดิมที่ยังไม่ verify
-        existingUser.firstName = firstName;
-        existingUser.lastName = lastName;
-        existingUser.password = password;
-        existingUser.gender = gender;
-        existingUser.verificationToken = verificationToken;
-        existingUser.verificationTokenExpires = verificationTokenExpires;
-        await existingUser.save();
-      }
-    } else {
-      // สร้างผู้ใช้ใหม่ลง Database โดยที่ยังไม่ verify
-      await User.create({
-        firstName,
-        lastName,
-        email,
-        password,
-        gender,
-        role: "user",
-        isVerified: false,
-        verificationToken,
-        verificationTokenExpires
+      return res.status(400).json({
+        message: "อีเมลนี้ถูกใช้งานแล้ว",
+        suggestion: "หากลืมรหัสผ่าน กรุณาไปที่หน้า Forgot Password",
       });
     }
 
-    // สร้างลิงก์ยืนยัน
+    // สร้าง Token สำหรับการยืนยันอีเมล (เอาข้อมูลแนบลงไปใน token ด้วย หมดอายุใน 15 นาที)
+    const verificationToken = jwt.sign(
+      { firstName, lastName, email, password, gender },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" }
+    );
+
+    // สร้างลิงก์ยืนยัน เพื่อให้เวลาคนคลิกจากเมล แล้วลิงก์เด้งมาหา Frontend ก่อน หรือส่งมาหลังบ้าน
     const frontendUrl = process.env.CORS_ORIGIN || "http://localhost:5173";
     const verificationLink = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
@@ -136,11 +115,6 @@ const login = async (req, res) => {
 
     if (!user) {
       return res.status(401).json({ message: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" });
-    }
-
-    // ตรวจสอบการยืนยันอีเมล
-    if (user.isVerified === false) {
-      return res.status(403).json({ message: "กรุณายืนยันอีเมลของคุณก่อนเข้าสู่ระบบ หากไม่พบอีเมลกรุณาสมัครใหม่อีกครั้ง" });
     }
 
     // ตรวจสอบสถานะ
@@ -257,7 +231,6 @@ const registerAdmin = async (req, res) => {
       gender,
       role: "admin",
       status: "active",
-      isVerified: true,
     });
 
     res.status(201).json({
@@ -314,24 +287,28 @@ const verifyEmail = async (req, res) => {
       return res.status(400).json({ message: "ไม่พบ Token ยืนยันตัวตน" });
     }
 
-    const user = await User.findOne({ 
-      where: { 
-        verificationToken: token,
-        verificationTokenExpires: { [Op.gt]: new Date() } 
-      } 
-    });
+    // ถอดรหัส Token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { firstName, lastName, email, password, gender } = decoded;
 
-    if (!user) {
-      return res.status(400).json({ message: "Token ไม่ถูกต้องหรือหมดอายุแล้ว กรุณาสมัครสมาชิกใหม่อีกครั้ง" });
+    // ตรวจสอบอีกครั้งว่าอีเมลถูกใช้งานไปแล้วหรือยัง (เผื่อกรณีกดยืนยันเบิ้ล)
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: "อีเมลนี้ถูกใช้งานไปแล้ว" });
     }
 
-    user.isVerified = true;
-    user.verificationToken = null;
-    user.verificationTokenExpires = null;
-    await user.save();
+    // สร้างข้อมูลลง Database จริงๆ ตรงนี้
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      password,
+      gender,
+      role: "user",
+    });
 
-    res.status(200).json({
-      message: "ยืนยันอีเมลสำเร็จแล้ว! คุณสามารถเข้าสู่ระบบได้",
+    res.status(201).json({
+      message: "ยืนยันอีเมลและสร้างบัญชีสำเร็จ สามารถเข้าสู่ระบบได้ทันที",
       user: {
         id: user.id,
         firstName: user.firstName,
@@ -342,8 +319,11 @@ const verifyEmail = async (req, res) => {
       },
     });
   } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(400).json({ message: "ลิงก์ยืนยันหมดอายุแล้ว กรุณาสมัครใหม่อีกครั้ง" });
+    }
     console.error("Verify email error:", error);
-    res.status(500).json({ message: "เกิดข้อผิดพลาดในการยืนยันอีเมล" });
+    res.status(500).json({ message: "เกิดข้อผิดพลาด หรือลิงก์ยืนยันไม่ถูกต้อง" });
   }
 };
 

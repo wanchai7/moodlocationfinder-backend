@@ -69,18 +69,6 @@ const User = sequelize.define('User', {
     sessionToken: {
         type: DataTypes.TEXT,
         allowNull: true
-    },
-    isVerified: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false
-    },
-    verificationToken: {
-        type: DataTypes.STRING,
-        allowNull: true
-    },
-    verificationTokenExpires: {
-        type: DataTypes.DATE,
-        allowNull: true
     }
 }, {
     tableName: 'users',
