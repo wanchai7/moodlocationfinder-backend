@@ -20,25 +20,18 @@ const generateToken = (id) => {
 };
 
 // ========== UC1: สมัครสมาชิก (สำหรับ Frontend) ==========
-// POST /api/auth/register
-// สำหรับ frontend ใช้สมัครสมาชิก - role จะเป็น 'user' เสมอ (ไม่รับ role จาก body)
 const register = async (req, res) => {
   try {
     const { firstName, lastName, email, password, gender } = req.body;
 
-    // ตรวจสอบข้อมูลที่จำเป็น
     if (!firstName || !lastName || !email || !password || !gender) {
       return res.status(400).json({ message: "กรุณากรอกข้อมูลให้ครบทุกช่อง" });
     }
 
-    // ตรวจสอบรหัสผ่านขั้นต่ำ 6 ตัว
     if (password.length < 6) {
-      return res
-        .status(400)
-        .json({ message: "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร" });
+      return res.status(400).json({ message: "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร" });
     }
 
-    // ตรวจสอบอีเมลซ้ำ
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       return res.status(400).json({
@@ -47,27 +40,22 @@ const register = async (req, res) => {
       });
     }
 
-    // สร้าง Token สำหรับการยืนยันอีเมล (เอาข้อมูลแนบลงไปใน token ด้วย หมดอายุใน 15 นาที)
     const verificationToken = jwt.sign(
       { firstName, lastName, email, password, gender },
       process.env.JWT_SECRET,
       { expiresIn: "15m" }
     );
 
-    // ตรวจสอบว่าใครยิง Request มา (Localhost หรือ Vercel) เพื่อให้ลิงก์อีเมลเด้งกลับไปที่เดิม
     let verificationLink = "";
     if (!req.headers.origin) {
-      // หากทดสอบผ่าน Postman (ไม่มี origin) ให้ส่งลิงก์กลับมาที่ Backend port 5000 เพื่อเปิดหน้าเว็บ
       const port = process.env.PORT || 5000;
       verificationLink = `http://localhost:${port}/api/v1/auth/verify-email/${verificationToken}`;
     } else {
-      // หากมาจาก Frontend ก็ให้ส่งลิงก์ไปที่ Frontend ตามปกติ
       const fallbackOrigin = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',')[0].trim() : "http://localhost:5173";
       const frontendUrl = req.headers.origin || fallbackOrigin;
       verificationLink = `${frontendUrl}/verify-email?token=${verificationToken}`;
     }
 
-    // เตรียมส่งอีเมล
     const mailOptions = {
       from: process.env.EMAIL_VERIFY_USER,
       to: email,
@@ -91,7 +79,6 @@ const register = async (req, res) => {
       message: "ระบบได้ส่งลิงก์ยืนยันไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบอีเมลของคุณ",
     });
   } catch (error) {
-    // Sequelize validation errors
     if (error.name === "SequelizeValidationError") {
       const messages = error.errors.map((e) => e.message);
       return res.status(400).json({ message: messages.join(", ") });
@@ -103,14 +90,11 @@ const register = async (req, res) => {
       });
     }
     console.error("Register error:", error);
-    res
-      .status(500)
-      .json({ message: "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง" });
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง" });
   }
 };
 
 // ========== UC2: เข้าสู่ระบบ ==========
-// POST /api/auth/login
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -119,17 +103,14 @@ const login = async (req, res) => {
       return res.status(400).json({ message: "กรุณากรอกอีเมลและรหัสผ่าน" });
     }
 
-    // ค้นหาผู้ใช้
     const user = await User.findOne({ where: { email } });
 
     if (!user) {
       return res.status(401).json({ message: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" });
     }
 
-    // ตรวจสอบสถานะ
     if (user.status === "banned") {
       if (user.bannedUntil && new Date() > user.bannedUntil) {
-        // สิ้นสุดระยะเวลาการระงับ ให้ใช้งานได้ตามปกติ
         user.status = "active";
         user.bannedUntil = null;
         await user.save();
@@ -137,15 +118,12 @@ const login = async (req, res) => {
         const untilMsg = user.bannedUntil 
           ? ` ถึงวันที่ ${new Date(user.bannedUntil).toLocaleString('th-TH')} ` 
           : 'ถาวร ';
-        return res
-          .status(403)
-          .json({
+        return res.status(403).json({
             message: `บัญชีของคุณถูกระงับการใช้งาน${untilMsg}กรุณาติดต่อผู้ดูแลระบบ`,
           });
       }
     }
 
-    // ตรวจสอบรหัสผ่าน
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
       return res.status(401).json({ message: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" });
@@ -153,11 +131,9 @@ const login = async (req, res) => {
 
     const token = generateToken(user.id);
     
-    // อัปเดต sessionToken เพื่อเตะผู้ใช้เดิมออกเมื่อล็อกอินใหม่ (Single Session)
     user.sessionToken = token;
     await user.save();
 
-    // เตะเครื่องเก่าผ่าน Socket.IO แบบ Real-time ทันที (รองรับ Redis)
     let oldSocketId = await getReceiverSocketId(String(user.id));
     if (!oldSocketId) {
         oldSocketId = await getReceiverSocketId(user.id);
@@ -184,16 +160,13 @@ const login = async (req, res) => {
     });
   } catch (error) {
     console.error("Login error:", error);
-    res
-      .status(500)
-      .json({
+    res.status(500).json({
         message: "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง",
       });
   }
 };
 
 // ========== ดึงข้อมูลผู้ใช้ปัจจุบัน ==========
-// GET /api/auth/me
 const getMe = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
@@ -208,25 +181,18 @@ const getMe = async (req, res) => {
 };
 
 // ========== สร้าง Admin (สำหรับ Postman) ==========
-// POST /api/auth/register-admin
-// ไม่ต้อง login - ใช้สำหรับสร้าง admin ผ่าน Postman โดยตรง
 const registerAdmin = async (req, res) => {
   try {
     const { firstName, lastName, email, password, gender } = req.body;
 
-    // ตรวจสอบข้อมูลที่จำเป็น
     if (!firstName || !lastName || !email || !password || !gender) {
       return res.status(400).json({ message: "กรุณากรอกข้อมูลให้ครบทุกช่อง" });
     }
 
-    // ตรวจสอบรหัสผ่านขั้นต่ำ 6 ตัว
     if (password.length < 6) {
-      return res
-        .status(400)
-        .json({ message: "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร" });
+      return res.status(400).json({ message: "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร" });
     }
 
-    // ตรวจสอบอีเมลซ้ำ
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       return res.status(400).json({
@@ -234,7 +200,6 @@ const registerAdmin = async (req, res) => {
       });
     }
 
-    // สร้าง Admin user
     const user = await User.create({
       firstName,
       lastName,
@@ -257,7 +222,6 @@ const registerAdmin = async (req, res) => {
       },
     });
   } catch (error) {
-    // Sequelize validation errors
     if (error.name === "SequelizeValidationError") {
       const messages = error.errors.map((e) => e.message);
       return res.status(400).json({ message: messages.join(", ") });
@@ -268,19 +232,16 @@ const registerAdmin = async (req, res) => {
       });
     }
     console.error("RegisterAdmin error:", error);
-    res
-      .status(500)
-      .json({ message: "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง" });
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง" });
   }
 };
 
 // ========== ออกจากระบบ ==========
-// POST /api/auth/logout
 const logout = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (user) {
-      user.sessionToken = null; // เคลียร์ sessionToken
+      user.sessionToken = null;
       await user.save();
     }
     res.json({ message: "ออกจากระบบสำเร็จ" });
@@ -291,93 +252,293 @@ const logout = async (req, res) => {
 };
 
 // ========== ยืนยันอีเมลเพื่อสร้างบัญชี ==========
-// GET /api/auth/verify-email/:token หรือ POST /api/auth/verify-email
 const verifyEmail = async (req, res) => {
-  try {
-    const token = req.params.token || req.body.token || req.query.token;
-    if (!token) {
-      if (req.method === 'GET') {
-        return res.status(400).send(`
-          <div style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
-            <h1 style="color: #f44336;">❌ ไม่พบ Token ยืนยันตัวตน</h1>
-          </div>
-        `);
-      }
-      return res.status(400).json({ message: "ไม่พบ Token ยืนยันตัวตน" });
-    }
+    try {
+        const token = req.params.token || req.body.token;
 
-    // ถอดรหัส Token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const { firstName, lastName, email, password, gender } = decoded;
+        if (!token) {
+             if (req.method === 'GET') {
+                 return res.status(400).send(`<h2>❌ ไม่พบ Token ลิงก์ไม่ถูกต้อง</h2>`);
+             }
+             return res.status(400).json({ message: "ไม่พบ Token" });
+        }
 
-    // ตรวจสอบอีกครั้งว่าอีเมลถูกใช้งานไปแล้วหรือยัง (เผื่อกรณีกดยืนยันเบิ้ล)
-    const existingUser = await User.findOne({ where: { email } });
-    if (existingUser) {
-      if (req.method === 'GET') {
-        return res.status(400).send(`
-          <div style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
-            <h1 style="color: #ff9800;">⚠️ อีเมลนี้ถูกใช้งานไปแล้ว</h1>
-            <p>คุณสามารถปิดหน้านี้และไปเข้าสู่ระบบในแอปพลิเคชันได้ทันที</p>
-          </div>
-        `);
-      }
-      return res.status(400).json({ message: "อีเมลนี้ถูกใช้งานไปแล้ว" });
-    }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const { firstName, lastName, email, password, gender } = decoded;
 
-    // สร้างข้อมูลลง Database จริงๆ ตรงนี้
-    const user = await User.create({
-      firstName,
-      lastName,
-      email,
-      password,
-      gender,
-      role: "user",
-    });
+        // Check if user already exists
+        const existingUser = await User.findOne({ where: { email } });
+        if (existingUser) {
+             if (req.method === 'GET') {
+                  return res.send(`
+                      <div style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+                          <h2 style="color: #4CAF50;">✅ อีเมลนี้ถูกยืนยันไปแล้ว</h2>
+                          <p>คุณสามารถปิดหน้านี้และไปเข้าสู่ระบบได้เลย</p>
+                      </div>
+                  `);
+             }
+             return res.status(400).json({ message: "อีเมลนี้ถูกใช้งานแล้ว" });
+        }
 
-    if (req.method === 'GET') {
-      return res.status(201).send(`
-        <div style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background-color: #f9f9f9; padding: 40px; border-radius: 10px; max-width: 500px; margin-left: auto; margin-right: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-          <h1 style="color: #4CAF50; font-size: 32px; margin-bottom: 20px;">✅ ยืนยันอีเมลสำเร็จ!</h1>
-          <p style="font-size: 18px; color: #333; line-height: 1.6;">บัญชีของคุณถูกสร้างและบันทึกลงฐานข้อมูลเรียบร้อยแล้ว</p>
-          <p style="font-size: 16px; color: #666; margin-top: 20px;">ตอนนี้คุณสามารถปิดหน้านี้และกลับไปเข้าสู่ระบบผ่านแอปพลิเคชันได้ทันที</p>
-        </div>
-      `);
-    }
+        // Create new user
+        await User.create({ firstName, lastName, email, password, gender, status: "active" });
 
-    res.status(201).json({
-      message: "ยืนยันอีเมลและสร้างบัญชีสำเร็จ สามารถเข้าสู่ระบบได้ทันที",
-      user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        gender: user.gender,
-        role: user.role,
-      },
-    });
-  } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      if (req.method === 'GET') {
-        return res.status(400).send(`
-          <div style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
-            <h1 style="color: #f44336;">⏳ ลิงก์ยืนยันหมดอายุแล้ว</h1>
-            <p>กรุณากลับไปสมัครสมาชิกใหม่อีกครั้ง</p>
-          </div>
-        `);
-      }
-      return res.status(400).json({ message: "ลิงก์ยืนยันหมดอายุแล้ว กรุณาสมัครใหม่อีกครั้ง" });
+        if (req.method === 'GET') {
+              return res.send(`
+                  <div style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+                      <h2 style="color: #4CAF50;">✅ ยืนยันอีเมลสำเร็จ!</h2>
+                      <p>บัญชีของคุณถูกสร้างเรียบร้อยแล้ว คุณสามารถเข้าสู่ระบบและใช้งานได้ทันที</p>
+                  </div>
+              `);
+        }
+        res.status(201).json({ message: "ยืนยันอีเมลสำเร็จและสร้างบัญชีเรียบร้อย" });
+
+    } catch (error) {
+        if (req.method === 'GET') {
+             return res.send(`
+                 <div style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+                     <h2 style="color: #F44336;">❌ ลิงก์ยืนยันไม่ถูกต้องหรือหมดอายุ</h2>
+                     <p>กรุณาสมัครสมาชิกใหม่อีกครั้ง</p>
+                 </div>
+             `);
+        }
+        return res.status(400).json({ message: "Token ไม่ถูกต้องหรือหมดอายุ" });
     }
-    console.error("Verify email error:", error);
-    if (req.method === 'GET') {
-      return res.status(500).send(`
-        <div style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
-          <h1 style="color: #f44336;">❌ เกิดข้อผิดพลาดในระบบ</h1>
-          <p>ลิงก์ยืนยันไม่ถูกต้องหรือระบบมีปัญหา กรุณาลองใหม่อีกครั้ง</p>
-        </div>
-      `);
-    }
-    res.status(500).json({ message: "เกิดข้อผิดพลาด หรือลิงก์ยืนยันไม่ถูกต้อง" });
-  }
 };
 
-module.exports = { register, login, getMe, registerAdmin, logout, verifyEmail };
+// ========== ลืมรหัสผ่าน (ขอรีเซ็ต) ==========
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ message: "กรุณากรอกอีเมล" });
+        }
+
+        const user = await User.findOne({ where: { email } });
+        if (!user) {
+            return res.status(404).json({ message: "ไม่พบอีเมลนี้ในระบบ" });
+        }
+
+        // สร้าง token สำหรับรีเซ็ต
+        const resetToken = crypto.randomBytes(32).toString("hex");
+        
+        // แฮช token และบันทึกในฐานข้อมูลพร้อมเวลาหมดอายุ (15 นาที)
+        user.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+        user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+        await user.save();
+
+        let resetUrl = "";
+        const port = process.env.PORT || 5000;
+        resetUrl = `http://localhost:${port}/api/v1/auth/reset-password/${resetToken}`;
+        
+        if (process.env.NODE_ENV === "production" || (req.headers.host && req.headers.host.includes("vercel"))) {
+            resetUrl = `https://moodlocationproject-api.vercel.app/api/v1/auth/reset-password/${resetToken}`;
+        }
+
+        const mailOptions = {
+            from: process.env.EMAIL_VERIFY_USER,
+            to: email,
+            subject: "คำขอเปลี่ยนรหัสผ่าน MoodLocationFinder",
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #333;">คุณได้ขอเปลี่ยนรหัสผ่าน</h2>
+                    <p>กรุณาคลิกที่ปุ่มด้านล่างเพื่อทำการตั้งรหัสผ่านใหม่:</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${resetUrl}" style="padding: 12px 24px; background-color: #2196F3; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">ตั้งรหัสผ่านใหม่</a>
+                    </div>
+                    <p style="color: #666; font-size: 14px;">(ลิงก์นี้จะหมดอายุภายใน 15 นาที)</p>
+                    <p style="color: #888; font-size: 12px; margin-top: 30px;">หากคุณไม่ได้ทำการขอเปลี่ยนรหัสผ่าน กรุณาละเว้นอีเมลฉบับนี้</p>
+                </div>
+            `,
+        };
+
+        await transporter.sendMail(mailOptions);
+        
+        res.status(200).json({ message: "ระบบได้ส่งลิงก์เปลี่ยนรหัสผ่านไปยังอีเมลของคุณแล้ว" });
+
+    } catch (error) {
+        console.error("Forgot password error:", error);
+        res.status(500).json({ message: "เกิดข้อผิดพลาดในการส่งอีเมล" });
+    }
+};
+
+// ========== หน้าเว็บรีเซ็ตรหัสผ่าน (แสดง UI จาก Backend) ==========
+const getResetPasswordPage = async (req, res) => {
+    try {
+        const { token } = req.params;
+        
+        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+        const user = await User.findOne({
+            where: {
+                resetPasswordToken: hashedToken,
+                resetPasswordExpires: { [Op.gt]: Date.now() }
+            }
+        });
+
+        if (!user) {
+            return res.send(`
+                <div style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+                    <h2 style="color: #F44336;">❌ ลิงก์ไม่ถูกต้องหรือหมดอายุแล้ว</h2>
+                    <p>กรุณาขอลิงก์เปลี่ยนรหัสผ่านใหม่อีกครั้ง</p>
+                </div>
+            `);
+        }
+
+        res.send(`
+            <!DOCTYPE html>
+            <html lang="th">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>ตั้งรหัสผ่านใหม่ - MoodLocationFinder</title>
+                <style>
+                    body { font-family: 'Sarabun', Arial, sans-serif; background-color: #f5f5f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+                    .container { background-color: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+                    h2 { text-align: center; color: #333; margin-top: 0; }
+                    .form-group { margin-bottom: 20px; }
+                    label { display: block; margin-bottom: 8px; color: #555; }
+                    input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
+                    input:focus { border-color: #2196F3; outline: none; }
+                    button { width: 100%; padding: 14px; background-color: #2196F3; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold; transition: background-color 0.3s; }
+                    button:hover { background-color: #0b7dda; }
+                    .message { margin-top: 15px; text-align: center; padding: 10px; border-radius: 5px; display: none; }
+                    .error { background-color: #fde5e5; color: #d32f2f; display: block; }
+                    .success { background-color: #e8f5e9; color: #2e7d32; display: block; }
+                </style>
+            </head>
+            <body>
+                <div class="container" id="form-container">
+                    <h2>ตั้งรหัสผ่านใหม่</h2>
+                    <form id="reset-form">
+                        <div class="form-group">
+                            <label for="password">รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)</label>
+                            <input type="password" id="password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirmPassword">ยืนยันรหัสผ่านใหม่</label>
+                            <input type="password" id="confirmPassword" required>
+                        </div>
+                        <button type="submit" id="submit-btn">บันทึกรหัสผ่านใหม่</button>
+                        <div id="message" class="message"></div>
+                    </form>
+                </div>
+                <script>
+                    document.getElementById('reset-form').addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const password = document.getElementById('password').value;
+                        const confirmPassword = document.getElementById('confirmPassword').value;
+                        const messageEl = document.getElementById('message');
+                        const btn = document.getElementById('submit-btn');
+
+                        if (password !== confirmPassword) {
+                            messageEl.textContent = "รหัสผ่านไม่ตรงกัน กรุณาลองใหม่";
+                            messageEl.className = "message error";
+                            return;
+                        }
+
+                        if (password.length < 6) {
+                            messageEl.textContent = "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร";
+                            messageEl.className = "message error";
+                            return;
+                        }
+
+                        btn.disabled = true;
+                        btn.textContent = "กำลังบันทึก...";
+
+                        try {
+                            const response = await fetch('/api/v1/auth/reset-password/${token}', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ newPassword: password, confirmPassword: confirmPassword })
+                            });
+
+                            const data = await response.json();
+
+                            if (response.ok) {
+                                document.getElementById('form-container').innerHTML = \`
+                                    <div style="text-align: center;">
+                                        <h2 style="color: #4CAF50;">✅ เปลี่ยนรหัสผ่านสำเร็จ</h2>
+                                        <p style="color: #666; margin-top: 15px;">รหัสผ่านของคุณถูกเปลี่ยนเรียบร้อยแล้ว</p>
+                                        <p style="color: #666;">คุณสามารถปิดหน้านี้และกลับไปเข้าสู่ระบบด้วยรหัสผ่านใหม่ได้ทันที</p>
+                                    </div>
+                                \`;
+                            } else {
+                                messageEl.textContent = data.message || "เกิดข้อผิดพลาด กรุณาลองใหม่";
+                                messageEl.className = "message error";
+                                btn.disabled = false;
+                                btn.textContent = "บันทึกรหัสผ่านใหม่";
+                            }
+                        } catch (err) {
+                            messageEl.textContent = "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่";
+                            messageEl.className = "message error";
+                            btn.disabled = false;
+                            btn.textContent = "บันทึกรหัสผ่านใหม่";
+                        }
+                    });
+                </script>
+            </body>
+            </html>
+        `);
+    } catch (error) {
+        console.error("Get reset password page error:", error);
+        res.status(500).send("เกิดข้อผิดพลาดในระบบ");
+    }
+};
+
+// ========== ดำเนินการเปลี่ยนรหัสผ่าน ==========
+const resetPassword = async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { newPassword, confirmPassword } = req.body;
+
+        if (!newPassword || !confirmPassword) {
+            return res.status(400).json({ message: "กรุณากรอกรหัสผ่านให้ครบถ้วน" });
+        }
+
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({ message: "รหัสผ่านไม่ตรงกัน" });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ message: "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร" });
+        }
+
+        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+        const user = await User.findOne({
+            where: {
+                resetPasswordToken: hashedToken,
+                resetPasswordExpires: { [Op.gt]: Date.now() }
+            }
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: "ลิงก์ไม่ถูกต้องหรือหมดอายุแล้ว" });
+        }
+
+        user.password = newPassword; 
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+        user.sessionToken = null;
+        
+        await user.save();
+
+        let oldSocketId = await getReceiverSocketId(String(user.id));
+        if (!oldSocketId) {
+            oldSocketId = await getReceiverSocketId(user.id);
+        }
+        if (oldSocketId) {
+          io.to(oldSocketId).emit("force_logout", {
+            message: "รหัสผ่านของคุณถูกเปลี่ยนแปลง ระบบจะบังคับออกจากระบบ",
+          });
+        }
+
+        res.status(200).json({ message: "ตั้งรหัสผ่านใหม่สำเร็จ สามารถเข้าสู่ระบบได้ทันที" });
+
+    } catch (error) {
+        console.error("Reset password error:", error);
+        res.status(500).json({ message: "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน" });
+    }
+};
+
+module.exports = { register, login, getMe, registerAdmin, logout, verifyEmail, forgotPassword, getResetPasswordPage, resetPassword };

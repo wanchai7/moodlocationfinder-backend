@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getMe, registerAdmin, logout, verifyEmail } = require('../controllers/authController');
+const { register, login, getMe, registerAdmin, logout, verifyEmail, forgotPassword, getResetPasswordPage, resetPassword } = require('../controllers/authController');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
 // UC1: สมัครสมาชิก (ส่งอีเมลยืนยัน)
@@ -21,5 +21,10 @@ router.post('/register-admin', registerAdmin);
 
 // ออกจากระบบ
 router.post('/logout', protect, logout);
+
+// ลืมรหัสผ่าน
+router.post('/forgot-password', forgotPassword);
+router.get('/reset-password/:token', getResetPasswordPage);
+router.post('/reset-password/:token', resetPassword);
 
 module.exports = router;
