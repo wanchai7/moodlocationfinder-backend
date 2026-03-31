@@ -33,8 +33,8 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       NODE_ENV: ${NODE_ENV:-production}
       JWT_SECRET: ${JWT_SECRET}
-      EMAIL_USER: ${EMAIL_USER}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      EMAIL_VERIFY_USER: ${EMAIL_VERIFY_USER}
+      EMAIL_VERIFY: ${EMAIL_VERIFY}
     depends_on:
       postgres:
         condition: service_healthy

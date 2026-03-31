@@ -9,8 +9,8 @@ const { io, getReceiverSocketId } = require("../lib/socket");
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.EMAIL_VERIFY_USER,
+    pass: process.env.EMAIL_VERIFY,
   },
 });
 
@@ -81,7 +81,7 @@ const register = async (req, res) => {
 
     // เตรียมส่งอีเมล
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: process.env.EMAIL_VERIFY_USER,
       to: email,
       subject: "ยืนยันเพื่อเข้าใช้งานระบบ MoodLocationFinder",
       html: `
