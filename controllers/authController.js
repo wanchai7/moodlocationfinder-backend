@@ -150,8 +150,11 @@ const login = async (req, res) => {
     user.sessionToken = token;
     await user.save();
 
-    // เตะเครื่องเก่าผ่าน Socket.IO แบบ Real-time ทันที
-    const oldSocketId = getReceiverSocketId(String(user.id)) || getReceiverSocketId(user.id);
+    // เตะเครื่องเก่าผ่าน Socket.IO แบบ Real-time ทันที (รองรับ Redis)
+    let oldSocketId = await getReceiverSocketId(String(user.id));
+    if (!oldSocketId) {
+        oldSocketId = await getReceiverSocketId(user.id);
+    }
     if (oldSocketId) {
       io.to(oldSocketId).emit("force_logout", {
         message: "บัญชีนี้มีการเข้าสู่ระบบจากอุปกรณ์อื่น ระบบจะบังคับออกจากระบบ",

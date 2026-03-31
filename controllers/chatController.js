@@ -133,12 +133,12 @@ exports.sendMessage = async (req, res) => {
         });
 
         // realtime functionality => socket.io
-        const receiverSocketId = getReceiverSocketId(receiverId);
+        const receiverSocketId = await getReceiverSocketId(receiverId);
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("newMessage", newMessage);
         }
 
-        const senderSocketId = getReceiverSocketId(senderId);
+        const senderSocketId = await getReceiverSocketId(senderId);
         if (senderSocketId && receiverSocketId !== senderSocketId) {
             io.to(senderSocketId).emit("newMessage", newMessage);
         }
@@ -166,7 +166,7 @@ exports.markMessagesAsRead = async (req, res) => {
             }
         );
 
-        const senderSocketId = getReceiverSocketId(senderId);
+        const senderSocketId = await getReceiverSocketId(senderId);
         if (senderSocketId) {
             io.to(senderSocketId).emit("messagesRead", { readerId: myId });
         }
