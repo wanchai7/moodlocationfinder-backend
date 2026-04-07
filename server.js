@@ -18,6 +18,7 @@ const historyRoutes = require('./routes/historyRoutes');
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const chatRoomRoutes = require('./routes/chatRoomRoutes');
 const aiSearchRoutes = require('./routes/aiSearchRoutes');
 const mapsRoutes = require('./routes/mapsRoutes');
 
@@ -55,6 +56,7 @@ app.use('/api/v1/history', historyRoutes);
 app.use('/api/v1/users', userRoutes);         
 app.use('/api/v1/admin', adminRoutes);        
 app.use('/api/v1/messages', chatRoutes);      
+app.use('/api/v1/contact', chatRoomRoutes);
 app.use('/api/v1/ai', aiSearchRoutes);        
 app.use('/api/v1/maps', mapsRoutes);
 // Health check
