@@ -12,6 +12,8 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_VERIFY_USER,
     pass: process.env.EMAIL_VERIFY,
   },
+  connectionTimeout: 3000, // ลดเวลา Timeout เหลือ 3 วินาที (เพื่อให้หน้าบ้านไม่ต้องรอนาน)
+  socketTimeout: 3000,
 });
 
 // สร้าง JWT Token
