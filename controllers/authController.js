@@ -85,11 +85,19 @@ const register = async (req, res) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
-
-    res.status(200).json({
-      message: "ระบบได้ส่งลิงก์ยืนยันไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบอีเมลของคุณ",
-    });
+    try {
+      await transporter.sendMail(mailOptions);
+      res.status(200).json({
+        message: "ระบบได้ส่งลิงก์ยืนยันไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบอีเมลของคุณ",
+      });
+    } catch (mailError) {
+      console.warn("ไม่สามารถส่งอีเมลได้ (อาจติดข้อจำกัด Port บน Render Free Tier):", mailError.message);
+      // ส่งลิงก์กลับไปให้หน้าบ้านเผื่อให้ User กดเองได้เลย
+      res.status(200).json({
+        message: "ระบบไม่สามารถส่งอีเมลได้เนื่องจากข้อจำกัดของเซิร์ฟเวอร์ แต่คุณสามารถยืนยันตัวตนได้ผ่านลิงก์นี้",
+        verificationLink: verificationLink,
+      });
+    }
   } catch (error) {
     // Sequelize validation errors
     if (error.name === "SequelizeValidationError") {
