@@ -22,10 +22,15 @@ const updateProfile = async (req, res) => {
 
         // อัปเดตรูปโปรไฟล์
         if (req.file) {
+            if (!supabase) {
+                console.error("Supabase is not initialized. Please check your environment variables.");
+                return res.status(500).json({ message: 'ระบบจัดเก็บไฟล์ยังไม่ได้ตั้งค่า (Supabase is null)' });
+            }
+
             const bucketName = process.env.SUPABASE_BUCKET || 'uploads';
-            // ใช้ชื่อไฟล์ที่แนบมา (แนบ timestamp เพื่อป้องกันชื่อไฟล์ซ้ำกัน)
-            const originalName = req.file.originalname.replace(/\s+/g, '_');
-            const fileName = `profile_images/${Date.now()}_${originalName}`;
+            // ใช้ uuid ป้องกันปัญหาเรื่องชื่อไฟล์ภาษาไทยหรืออักขระพิเศษ
+            const ext = path.extname(req.file.originalname);
+            const fileName = `profile_images/${Date.now()}_${uuidv4()}${ext}`;
             const fileBuffer = req.file.buffer;
             
             // อัปโหลดไฟล์ไปยัง Supabase

@@ -102,11 +102,14 @@ const createPlace = async (req, res) => {
 
         let uploadedImages = [];
         if (req.files && req.files.length > 0) {
+            if (!supabase) {
+                console.error("Supabase is not initialized.");
+                return res.status(500).json({ message: 'ระบบจัดเก็บไฟล์ยังไม่ได้ตั้งค่า (Supabase is null)' });
+            }
             const bucketName = process.env.SUPABASE_BUCKET || 'uploads';
             for (const file of req.files) {
-                // ใช้ชื่อไฟล์ที่แนบมา (แนบ timestamp เพื่อป้องกันชื่อไฟล์ซ้ำกัน)
-                const originalName = file.originalname.replace(/\s+/g, '_');
-                const fileName = `place_images/${Date.now()}_${originalName}`;
+                const ext = path.extname(file.originalname);
+                const fileName = `place_images/${Date.now()}_${uuidv4()}${ext}`;
                 const fileBuffer = file.buffer;
                 
                 const { data, error } = await supabase.storage
@@ -202,11 +205,14 @@ const updatePlace = async (req, res) => {
 
         let uploadedImages = [];
         if (req.files && req.files.length > 0) {
+            if (!supabase) {
+                console.error("Supabase is not initialized.");
+                return res.status(500).json({ message: 'ระบบจัดเก็บไฟล์ยังไม่ได้ตั้งค่า (Supabase is null)' });
+            }
             const bucketName = process.env.SUPABASE_BUCKET || 'uploads';
             for (const file of req.files) {
-                // ใช้ชื่อไฟล์ที่แนบมา (แนบ timestamp เพื่อป้องกันชื่อไฟล์ซ้ำกัน)
-                const originalName = file.originalname.replace(/\s+/g, '_');
-                const fileName = `place_images/${Date.now()}_${originalName}`;
+                const ext = path.extname(file.originalname);
+                const fileName = `place_images/${Date.now()}_${uuidv4()}${ext}`;
                 const fileBuffer = file.buffer;
                 
                 const { data, error } = await supabase.storage
