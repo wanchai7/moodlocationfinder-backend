@@ -4,6 +4,9 @@ const { Op } = require('sequelize');
 const { v4: uuidv4 } = require('uuid');
 const supabase = require('../config/supabase');
 
+// เก็บ Timer ของแต่ละห้องแชตไว้ใน Memory
+const roomTimers = new Map();
+
 // For Users: Create or get an open support room (User clicks "Contact")
 exports.createOrGetContactRoom = async (req, res) => {
     try {
@@ -121,6 +124,9 @@ exports.sendMessageToRoom = async (req, res) => {
         room.lastMessageAt = new Date();
         await room.save();
 
+        // แจ้งทุกคนในห้องให้รู้ว่ามีข้อความใหม่
+        io.to(String(roomId)).emit("receive_message", newMessage);
+
         // Realtime Event Emission
         // If receiverId is known and they are online
         if (receiverId) {
@@ -132,6 +138,31 @@ exports.sendMessageToRoom = async (req, res) => {
             // Emitting to general new ticket channel for admins
             io.emit("newContactRequest", { room, message: newMessage });
         }
+
+        // --- ⏳ ตั้งค่า Timer 10 นาที (Reset ทุกครั้งที่มีการส่งข้อความ) ---
+        if (roomTimers.has(String(roomId))) {
+            clearTimeout(roomTimers.get(String(roomId)));
+        }
+
+        const newTimer = setTimeout(async () => {
+            try {
+                const targetRoom = await ChatRoom.findByPk(roomId);
+                if (targetRoom && targetRoom.status !== 'closed') {
+                    targetRoom.status = 'closed';
+                    await targetRoom.save();
+                    
+                    // แจ้งเตือนคนในห้องว่าห้องถูกปิดแล้ว
+                    io.to(String(roomId)).emit("room_closed", { roomId });
+                    console.log(`⏳ Room ${roomId} automatically closed due to 10-minute inactivity.`);
+                }
+            } catch (err) {
+                console.error("Timer error closing room:", err);
+            }
+            roomTimers.delete(String(roomId));
+        }, 10 * 60 * 1000); // 10 นาที = 600,000 ms
+
+        roomTimers.set(String(roomId), newTimer);
+        // -------------------------------------------------------------------
 
         res.status(201).json(newMessage);
     } catch (error) {
