@@ -139,7 +139,7 @@ exports.sendMessageToRoom = async (req, res) => {
             io.emit("newContactRequest", { room, message: newMessage });
         }
 
-        // --- ⏳ ตั้งค่า Timer 10 นาที (Reset ทุกครั้งที่มีการส่งข้อความ) ---
+        // --- ⏳ ตั้งค่า Timer 15 นาที (Reset ทุกครั้งที่มีการส่งข้อความ) ---
         if (roomTimers.has(String(roomId))) {
             clearTimeout(roomTimers.get(String(roomId)));
         }
@@ -147,19 +147,19 @@ exports.sendMessageToRoom = async (req, res) => {
         const newTimer = setTimeout(async () => {
             try {
                 const targetRoom = await ChatRoom.findByPk(roomId);
-                if (targetRoom && targetRoom.status !== 'closed') {
-                    targetRoom.status = 'closed';
-                    await targetRoom.save();
+                if (targetRoom) {
+                    await ChatMessage.destroy({ where: { roomId } });
+                    await targetRoom.destroy();
                     
-                    // แจ้งเตือนคนในห้องว่าห้องถูกปิดแล้ว
-                    io.to(String(roomId)).emit("room_closed", { roomId });
-                    console.log(`⏳ Room ${roomId} automatically closed due to 10-minute inactivity.`);
+                    // แจ้งเตือนคนในห้องว่าห้องถูกลบแล้ว
+                    io.to(String(roomId)).emit("room_deleted", { roomId });
+                    console.log(`⏳ Room ${roomId} automatically deleted due to 15-minute inactivity.`);
                 }
             } catch (err) {
-                console.error("Timer error closing room:", err);
+                console.error("Timer error deleting room:", err);
             }
             roomTimers.delete(String(roomId));
-        }, 10 * 60 * 1000); // 10 นาที = 600,000 ms
+        }, 15 * 60 * 1000); // 15 นาที = 900,000 ms
 
         roomTimers.set(String(roomId), newTimer);
         // -------------------------------------------------------------------
@@ -184,6 +184,31 @@ exports.closeRoom = async (req, res) => {
         res.status(200).json({ message: "Room closed successfully", room });
     } catch (error) {
         console.error("Error in closeRoom: ", error.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+// Admin deletes room
+exports.deleteRoom = async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const room = await ChatRoom.findByPk(roomId);
+        if (!room) return res.status(404).json({ error: "Room not found" });
+
+        await ChatMessage.destroy({ where: { roomId } });
+        await room.destroy();
+
+        // เคลียร์ timer ถ้ามี
+        if (roomTimers.has(String(roomId))) {
+            clearTimeout(roomTimers.get(String(roomId)));
+            roomTimers.delete(String(roomId));
+        }
+
+        io.to(String(roomId)).emit("room_deleted", { roomId });
+
+        res.status(200).json({ message: "Room deleted successfully" });
+    } catch (error) {
+        console.error("Error in deleteRoom: ", error.message);
         res.status(500).json({ error: "Internal server error" });
     }
 };

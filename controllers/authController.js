@@ -85,14 +85,21 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "กรุณากรอกอีเมลและรหัสผ่าน" });
+      return res.status(400).json({ message: "กรุณากรอกอีเมล/ชื่อผู้ใช้ และรหัสผ่าน" });
     }
 
-    // ค้นหาผู้ใช้
-    const user = await User.findOne({ where: { email } });
+    // ค้นหาผู้ใช้จากอีเมลหรือชื่อ
+    const user = await User.findOne({
+      where: {
+        [Op.or]: [
+          { email: email },
+          { firstName: email }
+        ]
+      }
+    });
 
     if (!user) {
-      return res.status(401).json({ message: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" });
+      return res.status(401).json({ message: "อีเมล/ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง" });
     }
 
     // ตรวจสอบสถานะ

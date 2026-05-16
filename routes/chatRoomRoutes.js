@@ -5,7 +5,8 @@ const {
     getAllContactRooms,
     getRoomMessages,
     sendMessageToRoom,
-    closeRoom
+    closeRoom,
+    deleteRoom
 } = require('../controllers/chatRoomController');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
@@ -22,5 +23,7 @@ router.post('/:roomId/send', protect, sendMessageToRoom);
 router.get('/admin/all', protect, adminOnly, getAllContactRooms);
 // ปิดเคสการติดต่อ
 router.put('/admin/:roomId/close', protect, adminOnly, closeRoom);
+// ลบห้องแชต
+router.delete('/admin/:roomId', protect, adminOnly, deleteRoom);
 
 module.exports = router;
