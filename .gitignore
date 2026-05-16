@@ -1,5 +1,6 @@
 node_modules/
 .env
 uploads/
-MoodLocationFinder_API_Collection.json
+*postman*.json
+*Postman*.json
 README.md

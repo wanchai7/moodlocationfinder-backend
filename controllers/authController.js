@@ -1,20 +1,12 @@
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 const crypto = require("crypto");
 const { Op } = require("sequelize");
 const { User } = require("../models");
 const { io, getReceiverSocketId } = require("../lib/socket");
 
-// ตั้งค่า Nodemailer (ดึงข้อมูลจาก .env)
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_VERIFY_USER,
-    pass: process.env.EMAIL_VERIFY,
-  },
-  connectionTimeout: 3000, // ลดเวลา Timeout เหลือ 3 วินาที (เพื่อให้หน้าบ้านไม่ต้องรอนาน)
-  socketTimeout: 3000,
-});
+// ตั้งค่า Resend (ดึงข้อมูล API Key จาก .env)
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // สร้าง JWT Token
 const generateToken = (id) => {
@@ -49,6 +41,29 @@ const register = async (req, res) => {
       });
     }
 
+    // หากส่ง isVerified: true มาด้วย (สำหรับ Postman / ทดสอบ) ให้สร้าง User เลยโดยไม่ต้องรอยืนยันอีเมล
+    if (req.body.isVerified === true) {
+      const user = await User.create({
+        firstName,
+        lastName,
+        email,
+        password,
+        gender,
+        role: "user",
+      });
+      return res.status(201).json({
+        message: "สมัครสมาชิกสำเร็จ (ข้ามการยืนยันอีเมลเนื่องจากตั้งค่า isVerified: true)",
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          gender: user.gender,
+          role: user.role,
+        },
+      });
+    }
+
     // สร้าง Token สำหรับการยืนยันอีเมล (เอาข้อมูลแนบลงไปใน token ด้วย หมดอายุใน 15 นาที)
     const verificationToken = jwt.sign(
       { firstName, lastName, email, password, gender },
@@ -70,30 +85,28 @@ const register = async (req, res) => {
     }
 
     // เตรียมส่งอีเมล
-    const mailOptions = {
-      from: process.env.EMAIL_VERIFY_USER,
-      to: email,
-      subject: "ยืนยันเพื่อเข้าใช้งานระบบ MoodLocationFinder",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #333;">ยินดีต้อนรับสู่ MoodLocationFinder</h2>
-          <p>ขอบคุณสำหรับการสมัครสมาชิก กรุณาคลิกที่ปุ่มด้านล่างเพื่อยืนยันอีเมลและสร้างบัญชีของคุณ:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${verificationLink}" style="padding: 12px 24px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">ยืนยันเพื่อเข้าใช้งานระบบ moodlocation</a>
-          </div>
-          <p style="color: #666; font-size: 14px;">(ลิงก์นี้จะหมดอายุภายใน 15 นาที)</p>
-          <p style="color: #888; font-size: 12px; margin-top: 30px;">หากคุณไม่ได้ทำการสมัครสมาชิก กรุณาละเว้นอีเมลฉบับนี้</p>
-        </div>
-      `,
-    };
-
     try {
-      await transporter.sendMail(mailOptions);
+      await resend.emails.send({
+        from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev", // ใช้อีเมลของคุณที่ยืนยันใน Resend
+        to: email, // อีเมลปลายทาง (ถ้าใช้ฟรีเทียร์ของ Resend อาจจะต้องยืนยันอีเมลปลายทางใน dashboard ด้วย)
+        subject: "ยืนยันเพื่อเข้าใช้งานระบบ MoodLocationFinder",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333;">ยินดีต้อนรับสู่ MoodLocationFinder</h2>
+            <p>ขอบคุณสำหรับการสมัครสมาชิก กรุณาคลิกที่ปุ่มด้านล่างเพื่อยืนยันอีเมลและสร้างบัญชีของคุณ:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${verificationLink}" style="padding: 12px 24px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">ยืนยันเพื่อเข้าใช้งานระบบ moodlocation</a>
+            </div>
+            <p style="color: #666; font-size: 14px;">(ลิงก์นี้จะหมดอายุภายใน 15 นาที)</p>
+            <p style="color: #888; font-size: 12px; margin-top: 30px;">หากคุณไม่ได้ทำการสมัครสมาชิก กรุณาละเว้นอีเมลฉบับนี้</p>
+          </div>
+        `,
+      });
       res.status(200).json({
         message: "ระบบได้ส่งลิงก์ยืนยันไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบอีเมลของคุณ",
       });
     } catch (mailError) {
-      console.warn("ไม่สามารถส่งอีเมลได้ (อาจติดข้อจำกัด Port บน Render Free Tier):", mailError.message);
+      console.warn("ไม่สามารถส่งอีเมลได้:", mailError.message);
       // ส่งลิงก์กลับไปให้หน้าบ้านเผื่อให้ User กดเองได้เลย
       res.status(200).json({
         message: "ระบบไม่สามารถส่งอีเมลได้เนื่องจากข้อจำกัดของเซิร์ฟเวอร์ แต่คุณสามารถยืนยันตัวตนได้ผ่านลิงก์นี้",

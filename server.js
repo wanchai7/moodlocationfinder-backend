@@ -59,6 +59,7 @@ app.use('/api/v1/messages', chatRoutes);
 app.use('/api/v1/contact', chatRoomRoutes);
 app.use('/api/v1/ai', aiSearchRoutes);        
 app.use('/api/v1/maps', mapsRoutes);
+
 // Health check
 app.get('/', (req, res) => {
     res.json({
