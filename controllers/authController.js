@@ -38,6 +38,7 @@ const register = async (req, res) => {
     }
 
     // สร้าง User
+    const verificationToken = crypto.randomBytes(32).toString('hex');
     const user = await User.create({
       firstName,
       lastName,
@@ -45,10 +46,16 @@ const register = async (req, res) => {
       password,
       gender,
       role: "user",
+      verificationToken,
+      isVerified: false
     });
 
+    // ส่งอีเมลยืนยัน
+    const { sendVerificationEmail } = require('../utils/email');
+    await sendVerificationEmail(email, verificationToken);
+
     return res.status(201).json({
-      message: "สมัครสมาชิกสำเร็จ",
+      message: "สมัครสมาชิกสำเร็จ กรุณาตรวจสอบอีเมลของคุณเพื่อยืนยันบัญชี",
       user: {
         id: user.id,
         firstName: user.firstName,
@@ -125,6 +132,11 @@ const login = async (req, res) => {
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
       return res.status(401).json({ message: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" });
+    }
+
+    // ตรวจสอบการยืนยันอีเมล
+    if (user.role === 'user' && !user.isVerified) {
+       return res.status(403).json({ message: "กรุณายืนยันอีเมลของคุณก่อนเข้าสู่ระบบ" });
     }
 
     const token = generateToken(user.id);
@@ -266,4 +278,26 @@ const logout = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getMe, registerAdmin, logout };
+// ========== ยืนยันอีเมล ==========
+// GET /api/auth/verify-email/:token
+const verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const user = await User.findOne({ where: { verificationToken: token } });
+    
+    if (!user) {
+      return res.status(400).json({ message: "ลิงก์ยืนยันไม่ถูกต้องหรือหมดอายุแล้ว" });
+    }
+
+    user.isVerified = true;
+    user.verificationToken = null;
+    await user.save();
+
+    res.json({ message: "ยืนยันอีเมลสำเร็จ สามารถเข้าสู่ระบบได้" });
+  } catch (error) {
+    console.error("Verify email error:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการยืนยันอีเมล" });
+  }
+};
+
+module.exports = { register, login, getMe, registerAdmin, logout, verifyEmail };

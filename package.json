@@ -11,6 +11,7 @@
     "name": "Dev Wanchai"
   },
   "dependencies": {
+    "@getbrevo/brevo": "^5.0.4",
     "@google/generative-ai": "^0.24.1",
     "@googlemaps/google-maps-services-js": "^3.4.2",
     "@socket.io/redis-adapter": "^8.3.0",

@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getMe, registerAdmin, logout } = require('../controllers/authController');
+const { register, login, getMe, registerAdmin, logout, verifyEmail } = require('../controllers/authController');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
 // UC1: สมัครสมาชิก (ส่งอีเมลยืนยัน)
 router.post('/register', register);
 
-
+// ยืนยันอีเมล
+router.get('/verify-email/:token', verifyEmail);
 
 // UC2: เข้าสู่ระบบ
 router.post('/login', login);
