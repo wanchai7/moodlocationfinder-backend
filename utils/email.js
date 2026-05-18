@@ -5,7 +5,7 @@ const sendVerificationEmail = async (email, token) => {
             return false;
         }
 
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:5173';
         const senderEmail = process.env.BREVO_SENDER_EMAIL || "noreply@moodlocationfinder.com";
 
         const response = await fetch('https://api.brevo.com/v3/smtp/email', {
