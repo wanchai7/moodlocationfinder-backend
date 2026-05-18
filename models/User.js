@@ -61,14 +61,6 @@ const User = sequelize.define('User', {
         type: DataTypes.STRING,
         defaultValue: null
     },
-    isVerified: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false
-    },
-    verificationToken: {
-        type: DataTypes.STRING,
-        allowNull: true
-    },
     status: {
         type: DataTypes.ENUM('active', 'banned'),
         defaultValue: 'active'

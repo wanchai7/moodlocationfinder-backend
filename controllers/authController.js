@@ -37,33 +37,23 @@ const register = async (req, res) => {
       });
     }
 
-    // สร้าง User
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const user = await User.create({
-      firstName,
-      lastName,
-      email,
-      password,
-      gender,
-      role: "user",
-      verificationToken,
-      isVerified: false
-    });
+    // สร้าง Token ที่เก็บข้อมูลผู้ใช้ไว้ชั่วคราว (หมดอายุใน 15 นาที)
+    const verificationToken = jwt.sign(
+      { firstName, lastName, email, password, gender },
+      process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
 
     // ส่งอีเมลยืนยัน
     const { sendVerificationEmail } = require('../utils/email');
-    await sendVerificationEmail(email, verificationToken);
+    const emailSent = await sendVerificationEmail(email, verificationToken);
 
-    return res.status(201).json({
-      message: "สมัครสมาชิกสำเร็จ กรุณาตรวจสอบอีเมลของคุณเพื่อยืนยันบัญชี",
-      user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        gender: user.gender,
-        role: user.role,
-      },
+    if (!emailSent) {
+      return res.status(500).json({ message: "ไม่สามารถส่งอีเมลได้ในขณะนี้ กรุณาลองใหม่อีกครั้งหรือตรวจสอบการตั้งค่า Brevo" });
+    }
+
+    return res.status(200).json({
+      message: "ระบบได้ส่งลิงก์ยืนยันไปที่อีเมลของคุณแล้ว กรุณากดยืนยันภายใน 15 นาที",
     });
 
   } catch (error) {
@@ -132,11 +122,6 @@ const login = async (req, res) => {
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
       return res.status(401).json({ message: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" });
-    }
-
-    // ตรวจสอบการยืนยันอีเมล
-    if (user.role === 'user' && !user.isVerified) {
-       return res.status(403).json({ message: "กรุณายืนยันอีเมลของคุณก่อนเข้าสู่ระบบ" });
     }
 
     const token = generateToken(user.id);
@@ -283,17 +268,35 @@ const logout = async (req, res) => {
 const verifyEmail = async (req, res) => {
   try {
     const { token } = req.params;
-    const user = await User.findOne({ where: { verificationToken: token } });
     
-    if (!user) {
-      return res.status(400).json({ message: "ลิงก์ยืนยันไม่ถูกต้องหรือหมดอายุแล้ว" });
+    // 1. ถอดรหัส Token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(400).json({ message: "ลิงก์ยืนยันไม่ถูกต้องหรือหมดอายุแล้ว กรุณาสมัครใหม่อีกครั้ง" });
     }
 
-    user.isVerified = true;
-    user.verificationToken = null;
-    await user.save();
+    const { firstName, lastName, email, password, gender } = decoded;
 
-    res.json({ message: "ยืนยันอีเมลสำเร็จ สามารถเข้าสู่ระบบได้" });
+    // 2. ตรวจสอบว่าอีเมลนี้ถูกใช้งานไปแล้วหรือยัง (ป้องกันการกดลิงก์เดิมซ้ำ)
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: "อีเมลนี้ได้รับการยืนยันและใช้งานไปแล้ว" });
+    }
+
+    // 3. บันทึกข้อมูลผู้ใช้ลงฐานข้อมูลเมื่อยืนยันสำเร็จเท่านั้น
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      password,
+      gender,
+      role: "user",
+      status: "active"
+    });
+
+    res.status(201).json({ message: "ยืนยันอีเมลสำเร็จ คุณสามารถเข้าสู่ระบบได้แล้ว" });
   } catch (error) {
     console.error("Verify email error:", error);
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการยืนยันอีเมล" });
