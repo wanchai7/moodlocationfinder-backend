@@ -39,7 +39,10 @@ exports.analyzeEmotion = async (req, res) => {
 ข้อความที่ต้องการวิเคราะห์: "${text}"
 `;
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const geminiModel = process.env.GEMINI_MODEL || "gemini-1.5";
+        console.log('🎯 Gemini model:', geminiModel);
+
+        const model = genAI.getGenerativeModel({ model: geminiModel });
         const result = await model.generateContent(prompt);
         const responseText = result.response.text();
 
