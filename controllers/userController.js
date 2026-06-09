@@ -28,9 +28,13 @@ const updateProfile = async (req, res) => {
             }
 
             const bucketName = process.env.SUPABASE_BUCKET || 'uploads';
-            // ใช้ uuid ป้องกันปัญหาเรื่องชื่อไฟล์ภาษาไทยหรืออักขระพิเศษ
+            // ใช้ชื่อไฟล์ต้นฉบับพร้อมเพิ่ม timestamp เล็กน้อยเพื่อให้ยังจำได้ว่ามาจากไฟล์ไหน
+            // และป้องกันชื่อซ้ำเมื่อมีคนอัปโหลดชื่อไฟล์เดียวกัน
             const ext = path.extname(req.file.originalname);
-            const fileName = `profile_images/${Date.now()}_${uuidv4()}${ext}`;
+            const originalName = path.basename(req.file.originalname, ext)
+                .replace(/[^a-zA-Z0-9-_\.]/g, '_');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const fileName = `profile_images/${originalName}_${timestamp}${ext}`;
             const fileBuffer = req.file.buffer;
             
             // อัปโหลดไฟล์ไปยัง Supabase
