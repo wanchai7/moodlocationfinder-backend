@@ -96,8 +96,8 @@ const deleteReview = async (req, res) => {
             return res.status(404).json({ message: 'ไม่พบรีวิว' });
         }
 
-        // ตรวจสอบสิทธิ์ (เจ้าของหรือ admin)
-        if (review.userId !== req.user.id && req.user.role !== 'admin') {
+        // ตรวจสอบสิทธิ์ (เจ้าของหรือ admin/owner)
+        if (review.userId !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'owner') {
             return res.status(403).json({ message: 'ไม่มีสิทธิ์ลบรีวิวนี้' });
         }
 

@@ -72,8 +72,8 @@ exports.sendMessageToRoom = async (req, res) => {
         const room = await ChatRoom.findByPk(roomId);
         if (!room) return res.status(404).json({ error: "Room not found" });
 
-        // If an admin sends the first message, assign them to the room
-        if (req.user.role === 'admin' && room.adminId === null) {
+        // If an admin or owner sends the first message, assign them to the room
+        if ((req.user.role === 'admin' || req.user.role === 'owner') && room.adminId === null) {
             room.adminId = senderId;
             await room.save();
         }

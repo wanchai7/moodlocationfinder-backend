@@ -247,6 +247,64 @@ const registerAdmin = async (req, res) => {
   }
 };
 
+// ========== สร้าง Owner (สำหรับ Postman) ==========
+// POST /api/auth/register-owner
+// ไม่ต้อง login - ใช้สำหรับสร้าง owner ผ่าน Postman โดยตรง
+const registerOwner = async (req, res) => {
+  try {
+    const { firstName, lastName, email, password, gender } = req.body;
+
+    if (!firstName || !lastName || !email || !password || !gender) {
+      return res.status(400).json({ message: "กรุณากรอกข้อมูลให้ครบทุกช่อง" });
+    }
+
+    if (password.length < 6) {
+      return res
+        .status(400)
+        .json({ message: "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร" });
+    }
+
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: "อีเมลนี้ถูกใช้งานแล้ว" });
+    }
+
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      password,
+      gender,
+      role: "owner",
+      status: "active",
+    });
+
+    res.status(201).json({
+      message: "สร้าง Owner สำเร็จ",
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        gender: user.gender,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    if (error.name === "SequelizeValidationError") {
+      const messages = error.errors.map((e) => e.message);
+      return res.status(400).json({ message: messages.join(", ") });
+    }
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({ message: "อีเมลนี้ถูกใช้งานแล้ว" });
+    }
+    console.error("RegisterOwner error:", error);
+    res
+      .status(500)
+      .json({ message: "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง" });
+  }
+};
+
 // ========== ออกจากระบบ ==========
 // POST /api/auth/logout
 const logout = async (req, res) => {
@@ -303,4 +361,4 @@ const verifyEmail = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getMe, registerAdmin, logout, verifyEmail };
+module.exports = { register, login, getMe, registerAdmin, registerOwner, logout, verifyEmail };

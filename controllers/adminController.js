@@ -344,6 +344,10 @@ const banUser = async (req, res) => {
             return res.status(400).json({ message: 'ไม่สามารถแบนผู้ดูแลระบบได้' });
         }
 
+        if (user.role === 'owner' && req.user.role === 'admin') {
+            return res.status(400).json({ message: 'ไม่สามารถแบน owner ได้' });
+        }
+
         user.status = 'banned';
         user.bannedUntil = null;
         await user.save();
@@ -365,6 +369,10 @@ const unbanUser = async (req, res) => {
         const user = await User.findByPk(req.params.id);
         if (!user) {
             return res.status(404).json({ message: 'ไม่พบผู้ใช้งาน' });
+        }
+
+        if (user.role === 'owner' && req.user.role === 'admin') {
+            return res.status(400).json({ message: 'ไม่สามารถปลดแบน owner ได้' });
         }
 
         user.status = 'active';
@@ -393,6 +401,10 @@ const suspendUser = async (req, res) => {
 
         if (user.role === 'admin') {
             return res.status(400).json({ message: 'ไม่สามารถระงับผู้ดูแลระบบได้' });
+        }
+
+        if (user.role === 'owner' && req.user.role === 'admin') {
+            return res.status(400).json({ message: 'ไม่สามารถระงับ owner ได้' });
         }
 
         let totalMs = 0;
@@ -431,6 +443,10 @@ const deleteUser = async (req, res) => {
 
         if (user.role === 'admin') {
             return res.status(400).json({ message: 'ไม่สามารถลบผู้ดูแลระบบได้' });
+        }
+
+        if (user.role === 'owner' && req.user.role === 'admin') {
+            return res.status(400).json({ message: 'ไม่สามารถลบ owner ได้' });
         }
 
         // ต้องพิมพ์ DELETE เพื่อยืนยัน

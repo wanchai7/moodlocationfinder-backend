@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getMe, registerAdmin, logout, verifyEmail } = require('../controllers/authController');
+const { register, login, getMe, registerAdmin, registerOwner, logout, verifyEmail } = require('../controllers/authController');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
 // UC1: สมัครสมาชิก (ส่งอีเมลยืนยัน)
@@ -17,6 +17,7 @@ router.get('/me', protect, getMe);
 
 // สร้าง Admin (สำหรับ Postman - ไม่ต้อง login)
 router.post('/register-admin', registerAdmin);
+router.post('/register-owner', registerOwner);
 
 // ออกจากระบบ
 router.post('/logout', protect, logout);
