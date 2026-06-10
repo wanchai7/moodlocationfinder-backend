@@ -18,6 +18,8 @@
 ### 1. Authentication (ไม่ต้อง login)
 - **Register User**: สมัครสมาชิกใหม่
 - **Verify Email**: ยืนยันอีเมล (ใช้หลังจาก register)
+- **Forgot Password**: ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมล
+- **Reset Password**: ตั้งรหัสผ่านใหม่จากลิงก์ที่ได้รับในอีเมล
 - **Login**: เข้าสู่ระบบ (token จะถูกเก็บไว้ใน environment variable)
 - **Register Admin**: สร้างบัญชี admin
 
