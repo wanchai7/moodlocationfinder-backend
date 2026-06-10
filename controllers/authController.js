@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const { Op } = require("sequelize");
 const { User } = require("../models");
 const { io, getReceiverSocketId } = require("../lib/socket");
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/email');
 
 // สร้าง JWT Token
 const generateToken = (id) => {
@@ -45,7 +46,6 @@ const register = async (req, res) => {
     );
 
     // ส่งอีเมลยืนยัน
-    const { sendVerificationEmail } = require('../utils/email');
     const emailSent = await sendVerificationEmail(email, verificationToken);
 
     if (!emailSent) {
@@ -72,6 +72,76 @@ const register = async (req, res) => {
     res
       .status(500)
       .json({ message: "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง" });
+  }
+};
+
+// ========== UC1.5: ลืมรหัสผ่าน (ส่งลิงก์รีเซ็ตไปที่อีเมล) ==========
+// POST /api/auth/forgot-password
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "กรุณากรอกอีเมล" });
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(200).json({ message: "หากอีเมลนี้มีอยู่ในระบบ เราจะส่งลิงก์รีเซ็ตรหัสผ่านให้คุณ" });
+    }
+
+    const resetToken = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    const emailSent = await sendPasswordResetEmail(user.email, resetToken);
+    if (!emailSent) {
+      return res.status(500).json({ message: "ไม่สามารถส่งอีเมลได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" });
+    }
+
+    res.status(200).json({ message: "ส่งลิงก์รีเซ็ตรหัสผ่านไปทางอีเมลเรียบร้อยแล้ว" });
+  } catch (error) {
+    console.error('ForgotPassword error:', error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง" });
+  }
+};
+
+// ========== UC1.6: ตั้งรหัสผ่านใหม่จากลิงก์ ==========
+// PUT /api/auth/reset-password
+const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: 'กรุณาส่ง Token และรหัสผ่านใหม่' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(400).json({ message: 'ลิงก์รีเซ็ตรหัสผ่านไม่ถูกต้องหรือหมดอายุแล้ว' });
+    }
+
+    const { id, email } = decoded;
+    const user = await User.findOne({ where: { id, email } });
+    if (!user) {
+      return res.status(404).json({ message: 'ไม่พบผู้ใช้งานสำหรับอีเมลนี้' });
+    }
+
+    user.password = newPassword;
+    user.sessionToken = null;
+    await user.save();
+
+    res.json({ message: 'รีเซ็ตรหัสผ่านสำเร็จ คุณสามารถเข้าสู่ระบบด้วยรหัสผ่านใหม่ได้' });
+  } catch (error) {
+    console.error('ResetPassword error:', error);
+    res.status(500).json({ message: 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน' });
   }
 };
 
@@ -361,4 +431,4 @@ const verifyEmail = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getMe, registerAdmin, registerOwner, logout, verifyEmail };
+module.exports = { register, login, getMe, registerAdmin, registerOwner, logout, verifyEmail, forgotPassword, resetPassword };
