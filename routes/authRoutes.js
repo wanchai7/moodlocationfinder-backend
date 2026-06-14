@@ -13,7 +13,7 @@ router.get('/verify-email/:token', verifyEmail);
 router.post('/forgot-password', forgotPassword);
 
 // ตั้งรหัสผ่านใหม่จากลิงก์
-router.put('/reset-password', resetPassword);
+router.post('/reset-password/:token', resetPassword);
 
 // UC2: เข้าสู่ระบบ
 router.post('/login', login);
