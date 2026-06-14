@@ -108,10 +108,12 @@ const forgotPassword = async (req, res) => {
 };
 
 // ========== UC1.6: ตั้งรหัสผ่านใหม่จากลิงก์ ==========
-// PUT /api/auth/reset-password
+// POST /api/auth/reset-password/:token
 const resetPassword = async (req, res) => {
   try {
-    const { token, newPassword } = req.body;
+    // Accept token either in request body or URL param (frontend may POST to /reset-password/:token)
+    const token = req.body.token || req.params.token;
+    const { newPassword } = req.body;
 
     if (!token || !newPassword) {
       return res.status(400).json({ message: 'กรุณาส่ง Token และรหัสผ่านใหม่' });
