@@ -52,6 +52,9 @@ exports.getRoomMessages = async (req, res) => {
         const { roomId } = req.params;
         const messages = await ChatMessage.findAll({
             where: { roomId },
+            include: [
+                { model: User, as: 'sender', attributes: ['id', 'firstName', 'lastName', 'profileImage'] }
+            ],
             order: [['createdAt', 'ASC']]
         });
 
@@ -135,23 +138,29 @@ exports.sendMessageToRoom = async (req, res) => {
             image: imageUrl,
         });
 
+        const messageWithSender = await ChatMessage.findByPk(newMessage.id, {
+            include: [
+                { model: User, as: 'sender', attributes: ['id', 'firstName', 'lastName', 'profileImage'] }
+            ]
+        });
+
         room.lastMessage = text || 'Image';
         room.lastMessageAt = new Date();
         await room.save();
 
         // แจ้งทุกคนในห้องให้รู้ว่ามีข้อความใหม่
-        io.to(String(room.id)).emit("receive_message", newMessage);
+        io.to(String(room.id)).emit("receive_message", messageWithSender);
 
         // Realtime Event Emission
         // If receiverId is known and they are online
         if (receiverId) {
             const receiverSocketId = await getReceiverSocketId(receiverId);
             if (receiverSocketId) {
-                io.to(receiverSocketId).emit("newRoomMessage", newMessage);
+                io.to(receiverSocketId).emit("newRoomMessage", messageWithSender);
             }
         } else if (senderId === room.userId) {
             // Emitting to general new ticket channel for admins
-            io.emit("newContactRequest", { room, message: newMessage });
+            io.emit("newContactRequest", { room, message: messageWithSender });
         }
 
         // --- ⏳ ตั้งค่า Timer 15 นาที (Reset ทุกครั้งที่มีการส่งข้อความ) ---
@@ -179,7 +188,7 @@ exports.sendMessageToRoom = async (req, res) => {
         roomTimers.set(String(room.id), newTimer);
         // -------------------------------------------------------------------
 
-        res.status(201).json(newMessage);
+        res.status(201).json(messageWithSender);
     } catch (error) {
         console.error("Error in sendMessageToRoom: ", error.message);
         res.status(500).json({ error: "Internal server error" });

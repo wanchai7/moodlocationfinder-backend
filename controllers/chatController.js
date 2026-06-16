@@ -73,6 +73,9 @@ exports.getMessages = async (req, res) => {
                     { senderId: userToChatId, receiverId: myId }
                 ]
             },
+            include: [
+                { model: User, as: 'sender', attributes: ['id', 'firstName', 'lastName', 'profileImage'] }
+            ],
             order: [['createdAt', 'ASC']]
         });
 
@@ -132,18 +135,24 @@ exports.sendMessage = async (req, res) => {
             image: imageUrl,
         });
 
+        const messageWithSender = await ChatMessage.findByPk(newMessage.id, {
+            include: [
+                { model: User, as: 'sender', attributes: ['id', 'firstName', 'lastName', 'profileImage'] }
+            ]
+        });
+
         // realtime functionality => socket.io
         const receiverSocketId = await getReceiverSocketId(receiverId);
         if (receiverSocketId) {
-            io.to(receiverSocketId).emit("newMessage", newMessage);
+            io.to(receiverSocketId).emit("newMessage", messageWithSender);
         }
 
         const senderSocketId = await getReceiverSocketId(senderId);
         if (senderSocketId && receiverSocketId !== senderSocketId) {
-            io.to(senderSocketId).emit("newMessage", newMessage);
+            io.to(senderSocketId).emit("newMessage", messageWithSender);
         }
 
-        res.status(201).json(newMessage);
+        res.status(201).json(messageWithSender);
     } catch (error) {
         console.error("Error in sendMessage: ", error.message);
         res.status(500).json({ error: "Internal server error" });
