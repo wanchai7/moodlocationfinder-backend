@@ -23,16 +23,17 @@ const sendVerificationEmail = async (email, token) => {
                 to: [{ email: email }],
                 subject: "ยืนยันการสมัครสมาชิก Mood Location Finder",
                 htmlContent: `
-                    <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f9f9f9;">
-                        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                            <h2 style="color: #333;">ยินดีต้อนรับสู่ Mood Location Finder!</h2>
-                            <p style="color: #555; font-size: 16px;">เราดีใจที่คุณร่วมเป็นส่วนหนึ่งกับเรา กรุณาคลิกที่ปุ่มด้านล่างเพื่อยืนยันที่อยู่อีเมลของคุณ:</p>
+                    <div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; text-align: center; padding: 40px 20px; background-color: #F7F4EF; color: #3D342E;">
+                        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(61, 52, 46, 0.06); border: 1px solid #EFEBE4;">
+                            <img src="https://moodlocationproject.vercel.app/logo1.png" alt="Mood Location Finder" style="width: 160px; height: auto; display: block; margin: 0 auto 28px auto;" />
+                            <h2 style="color: #3D342E; font-size: 22px; font-weight: bold; margin-bottom: 16px; font-family: 'Helvetica Neue', Arial, sans-serif;">ยินดีต้อนรับสู่ Mood Location Finder!</h2>
+                            <p style="color: #635852; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">เราดีใจที่คุณร่วมเป็นส่วนหนึ่งกับเรา กรุณาคลิกที่ปุ่มด้านล่างเพื่อยืนยันที่อยู่อีเมลของคุณ</p>
                             <div style="margin: 30px 0;">
-                                <a href="${frontendUrl}/verify-email?token=${token}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">ยืนยันอีเมลของคุณ</a>
+                                <a href="${frontendUrl}/verify-email?token=${token}" style="display: inline-block; padding: 14px 32px; background-color: #E07A5F; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 10px rgba(224, 122, 95, 0.25);">ยืนยันอีเมลของคุณ</a>
                             </div>
-                            <p style="color: #888; font-size: 12px;">หากปุ่มด้านบนไม่ทำงาน คุณสามารถคัดลอกลิงก์นี้ไปวางในเบราว์เซอร์ของคุณได้:</p>
-                            <p style="color: #888; font-size: 12px; word-break: break-all;"><a href="${frontendUrl}/verify-email?token=${token}">${frontendUrl}/verify-email?token=${token}</a></p>
-                            <p style="margin-top: 40px; font-size: 14px; color: #999;">หากคุณไม่ได้ทำการสมัครสมาชิก กรุณาละเว้นอีเมลฉบับนี้</p>
+                            <div style="margin-top: 40px; border-top: 1px solid #F0ECE6; padding-top: 24px;">
+                                <p style="font-size: 13px; color: #A09690; margin: 0;">หากคุณไม่ได้ทำการสมัครสมาชิก กรุณาละเว้นอีเมลฉบับนี้</p>
+                            </div>
                         </div>
                     </div>
                 `
@@ -79,16 +80,17 @@ const sendPasswordResetEmail = async (email, token) => {
                 to: [{ email: email }],
                 subject: "รีเซ็ตรหัสผ่าน Mood Location Finder",
                 htmlContent: `
-                    <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f9f9f9;">
-                        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                            <h2 style="color: #333;">รีเซ็ตรหัสผ่านของคุณ</h2>
-                            <p style="color: #555; font-size: 16px;">คลิกที่ปุ่มด้านล่างเพื่อเข้าสู่หน้าตั้งรหัสผ่านใหม่</p>
+                    <div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; text-align: center; padding: 40px 20px; background-color: #F7F4EF; color: #3D342E;">
+                        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(61, 52, 46, 0.06); border: 1px solid #EFEBE4;">
+                            <img src="https://moodlocationproject.vercel.app/logo1.png" alt="Mood Location Finder" style="width: 160px; height: auto; display: block; margin: 0 auto 28px auto;" />
+                            <h2 style="color: #3D342E; font-size: 22px; font-weight: bold; margin-bottom: 16px; font-family: 'Helvetica Neue', Arial, sans-serif;">รีเซ็ตรหัสผ่านของคุณ</h2>
+                            <p style="color: #635852; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">เราได้รับการร้องขอให้ตั้งรหัสผ่านใหม่สำหรับบัญชีของคุณ คลิกที่ปุ่มด้านล่างเพื่อรีเซ็ตรหัสผ่าน</p>
                             <div style="margin: 30px 0;">
-                                <a href="${frontendUrl}/reset-password?token=${token}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">ตั้งรหัสผ่านใหม่</a>
+                                <a href="${frontendUrl}/reset-password?token=${token}" style="display: inline-block; padding: 14px 32px; background-color: #E07A5F; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 10px rgba(224, 122, 95, 0.25);">ตั้งรหัสผ่านใหม่</a>
                             </div>
-                            <p style="color: #888; font-size: 12px;">หากปุ่มด้านบนไม่ทำงาน ให้คัดลอกลิงก์นี้ไปวางในเบราว์เซอร์ของคุณ:</p>
-                            <p style="color: #888; font-size: 12px; word-break: break-all;"><a href="${frontendUrl}/reset-password?token=${token}">${frontendUrl}/reset-password?token=${token}</a></p>
-                            <p style="margin-top: 40px; font-size: 14px; color: #999;">ถ้าไม่ได้ร้องขอการรีเซ็ตรหัสผ่าน โปรดไม่ต้องดำเนินการใด ๆ</p>
+                            <div style="margin-top: 40px; border-top: 1px solid #F0ECE6; padding-top: 24px;">
+                                <p style="font-size: 13px; color: #A09690; margin: 0;">ถ้าคุณไม่ได้ร้องขอการรีเซ็ตรหัสผ่าน โปรดไม่ต้องดำเนินการใด ๆ</p>
+                            </div>
                         </div>
                     </div>
                 `
