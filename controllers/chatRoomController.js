@@ -69,8 +69,23 @@ exports.sendMessageToRoom = async (req, res) => {
         const { roomId } = req.params;
         const senderId = req.user.id;
         
-        const room = await ChatRoom.findByPk(roomId);
-        if (!room) return res.status(404).json({ error: "Room not found" });
+        let room = await ChatRoom.findByPk(roomId);
+        
+        // If room doesn't exist or is closed
+        if (!room || room.status === 'closed') {
+            if (req.user.role !== 'admin' && req.user.role !== 'owner') {
+                // For users, find or create an open room
+                room = await ChatRoom.findOne({
+                    where: { userId: senderId, status: 'open' }
+                });
+
+                if (!room) {
+                    room = await ChatRoom.create({ userId: senderId, status: 'open' });
+                }
+            } else {
+                return res.status(400).json({ error: "Cannot send message to a closed or non-existent room" });
+            }
+        }
 
         // If an admin or owner sends the first message, assign them to the room
         if ((req.user.role === 'admin' || req.user.role === 'owner') && room.adminId === null) {
@@ -115,7 +130,7 @@ exports.sendMessageToRoom = async (req, res) => {
         const newMessage = await ChatMessage.create({
             senderId,
             receiverId,
-            roomId,
+            roomId: room.id,
             text,
             image: imageUrl,
         });
@@ -125,7 +140,7 @@ exports.sendMessageToRoom = async (req, res) => {
         await room.save();
 
         // แจ้งทุกคนในห้องให้รู้ว่ามีข้อความใหม่
-        io.to(String(roomId)).emit("receive_message", newMessage);
+        io.to(String(room.id)).emit("receive_message", newMessage);
 
         // Realtime Event Emission
         // If receiverId is known and they are online
@@ -140,28 +155,28 @@ exports.sendMessageToRoom = async (req, res) => {
         }
 
         // --- ⏳ ตั้งค่า Timer 15 นาที (Reset ทุกครั้งที่มีการส่งข้อความ) ---
-        if (roomTimers.has(String(roomId))) {
-            clearTimeout(roomTimers.get(String(roomId)));
+        if (roomTimers.has(String(room.id))) {
+            clearTimeout(roomTimers.get(String(room.id)));
         }
 
         const newTimer = setTimeout(async () => {
             try {
-                const targetRoom = await ChatRoom.findByPk(roomId);
+                const targetRoom = await ChatRoom.findByPk(room.id);
                 if (targetRoom) {
-                    await ChatMessage.destroy({ where: { roomId } });
+                    await ChatMessage.destroy({ where: { roomId: room.id } });
                     await targetRoom.destroy();
                     
                     // แจ้งเตือนคนในห้องว่าห้องถูกลบแล้ว
-                    io.to(String(roomId)).emit("room_deleted", { roomId });
-                    console.log(`⏳ Room ${roomId} automatically deleted due to 15-minute inactivity.`);
+                    io.to(String(room.id)).emit("room_deleted", { roomId: room.id });
+                    console.log(`⏳ Room ${room.id} automatically deleted due to 15-minute inactivity.`);
                 }
             } catch (err) {
                 console.error("Timer error deleting room:", err);
             }
-            roomTimers.delete(String(roomId));
+            roomTimers.delete(String(room.id));
         }, 15 * 60 * 1000); // 15 นาที = 900,000 ms
 
-        roomTimers.set(String(roomId), newTimer);
+        roomTimers.set(String(room.id), newTimer);
         // -------------------------------------------------------------------
 
         res.status(201).json(newMessage);
@@ -181,9 +196,50 @@ exports.closeRoom = async (req, res) => {
         room.status = 'closed';
         await room.save();
 
+        // เคลียร์ timer ถ้ามี
+        if (roomTimers.has(String(roomId))) {
+            clearTimeout(roomTimers.get(String(roomId)));
+            roomTimers.delete(String(roomId));
+        }
+
+        // ส่ง socket event บอกการอัปเดตสถานะห้อง
+        io.to(String(roomId)).emit("room_status_updated", { roomId, status: 'closed' });
+
         res.status(200).json({ message: "Room closed successfully", room });
     } catch (error) {
         console.error("Error in closeRoom: ", error.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+// Admin updates room status (e.g., to closed/open)
+exports.updateRoomStatus = async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const { status } = req.body;
+
+        if (!status || !['open', 'closed'].includes(status)) {
+            return res.status(400).json({ error: "Invalid status value. Must be 'open' or 'closed'" });
+        }
+
+        const room = await ChatRoom.findByPk(roomId);
+        if (!room) return res.status(404).json({ error: "Room not found" });
+
+        room.status = status;
+        await room.save();
+
+        // เคลียร์ timer ถ้า status เป็น closed
+        if (status === 'closed' && roomTimers.has(String(roomId))) {
+            clearTimeout(roomTimers.get(String(roomId)));
+            roomTimers.delete(String(roomId));
+        }
+
+        // ส่ง socket event บอกการอัปเดตสถานะห้อง
+        io.to(String(roomId)).emit("room_status_updated", { roomId, status });
+
+        res.status(200).json({ message: `Room status updated to ${status} successfully`, room });
+    } catch (error) {
+        console.error("Error in updateRoomStatus: ", error.message);
         res.status(500).json({ error: "Internal server error" });
     }
 };
